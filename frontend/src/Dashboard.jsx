@@ -3,41 +3,42 @@ import {
   Search, LayoutDashboard, List, Bell, History, RotateCcw, 
   Puzzle, Lightbulb, Target, Star 
 } from 'lucide-react';
-import './Dashboard.css';
 
 const Dashboard = () => {
-  // Mock data for the table based on your image
+  // FIXED: Reset all table data to empty/zero states
   const puzzleData = [
-    { name: 'Frost Illusion', attempts: 10, points: '87.56%', status: 'Ranked' },
-    { name: 'Arid Mist Related', attempts: 10, points: '92.56%', status: 'Puzzle' },
-    { name: 'Frost Yard Names', attempts: 10, points: '66.56%', status: 'Puzzle' },
-    { name: 'Average Core', attempts: 10, points: '54.56%', status: 'Surreal' },
+    { name: '-', attempts: 0, points: '0%', status: '-' },
+    { name: '-', attempts: 0, points: '0%', status: '-' },
+    { name: '-', attempts: 0, points: '0%', status: '-' },
+    { name: '-', attempts: 0, points: '0%', status: '-' },
   ];
 
   return (
-    <div className="dashboard-layout">
+    <div className="flex min-h-screen bg-[#050505] text-white font-sans">
       
       {/* SIDEBAR */}
-      <aside className="sidebar">
-        <h2 className="sidebar-title">Dashboard</h2>
-        <nav className="sidebar-nav">
-          <a href="#" className="nav-item active">
+      <aside className="w-[260px] bg-[#0f0a0a] p-8 border-r border-[#221515] flex flex-col">
+        {/* FIXED: Added elegant serif font */}
+        <h2 className="font-serif italic text-3xl mb-10 pl-2 text-gray-100">Dashboard</h2>
+        
+        <nav className="flex flex-col gap-3">
+          <a href="#" className="flex items-center gap-4 px-5 py-3 rounded-full bg-[#4a4a4a] text-white font-bold transition-all">
             <LayoutDashboard size={20} />
             <span>Dashboard</span>
           </a>
-          <a href="#" className="nav-item">
+          <a href="#" className="flex items-center gap-4 px-5 py-3 rounded-full text-gray-300 hover:bg-white/5 transition-all">
             <List size={20} />
             <span>Current Stats</span>
           </a>
-          <a href="#" className="nav-item">
+          <a href="#" className="flex items-center gap-4 px-5 py-3 rounded-full text-gray-300 hover:bg-white/5 transition-all">
             <Bell size={20} />
             <span>Scores</span>
           </a>
-          <a href="#" className="nav-item">
+          <a href="#" className="flex items-center gap-4 px-5 py-3 rounded-full text-gray-300 hover:bg-white/5 transition-all">
             <History size={20} />
             <span>Report</span>
           </a>
-          <a href="#" className="nav-item">
+          <a href="#" className="flex items-center gap-4 px-5 py-3 rounded-full text-gray-300 hover:bg-white/5 transition-all">
             <RotateCcw size={20} />
             <span>Reanalyse</span>
           </a>
@@ -45,65 +46,75 @@ const Dashboard = () => {
       </aside>
 
       {/* MAIN CONTENT AREA */}
-      <main className="main-content">
+      <main className="flex-1 flex flex-col bg-[radial-gradient(circle_at_top_left,_#1a1010_0%,_#050505_100%)]">
         
         {/* TOP HEADER */}
-        <header className="top-header">
-          <div className="header-left">
-            <Search size={32} className="search-icon" />
-            <h1 className="welcome-text">Welcome., Shreyas 👋</h1>
+        <header className="px-10 py-8 bg-gradient-to-r from-[#1f1816] to-[#0a0808] border-b border-white/5 flex items-center">
+          <div className="flex items-center gap-4">
+            <Search size={32} className="text-gray-400" />
+            <h1 className="font-serif text-4xl text-gray-200 m-0">Welcome 👋</h1>
           </div>
         </header>
 
         {/* DASHBOARD CONTENT PANEL */}
-        <div className="content-panel">
+        {/* FIXED: Adjusted the dark maroon/brown box shadow and background */}
+        <div className="m-10 bg-[#1e1514] rounded-3xl p-8 flex-1 shadow-[0_10px_40px_rgba(0,0,0,0.6)] border border-white/5">
           
-          {/* STATS ROW */}
-          <div className="stats-grid">
-            <div className="stat-card">
-              <div className="stat-number">12</div>
-              <div className="stat-label">
-                <Puzzle size={16} color="#E53935" /> Total Puzzles
+          {/* STATS GRID */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-10">
+            {/* Stat Card 1 */}
+            <div className="bg-[#110c0b] border border-white/5 rounded-2xl py-8 px-4 flex flex-col items-center justify-center shadow-inner">
+              {/* FIXED: Values set to 0, applied Serif font */}
+              <div className="font-serif text-5xl mb-3 text-white">0</div>
+              <div className="flex items-center gap-2 text-sm text-gray-300 font-medium">
+                <Puzzle size={18} color="#E53935" /> Total Puzzles
               </div>
             </div>
-            <div className="stat-card">
-              <div className="stat-number">163</div>
-              <div className="stat-label">
-                <Lightbulb size={16} color="#E53935" /> Assistances
+            
+            {/* Stat Card 2 */}
+            <div className="bg-[#110c0b] border border-white/5 rounded-2xl py-8 px-4 flex flex-col items-center justify-center shadow-inner">
+              <div className="font-serif text-5xl mb-3 text-white">0</div>
+              <div className="flex items-center gap-2 text-sm text-gray-300 font-medium">
+                <Lightbulb size={18} color="#E53935" /> Assistances
               </div>
             </div>
-            <div className="stat-card">
-              <div className="stat-number">69%</div>
-              <div className="stat-label">
-                <Target size={16} color="#E53935" /> Attainment
+            
+            {/* Stat Card 3 */}
+            <div className="bg-[#110c0b] border border-white/5 rounded-2xl py-8 px-4 flex flex-col items-center justify-center shadow-inner">
+              <div className="font-serif text-5xl mb-3 text-white">0%</div>
+              <div className="flex items-center gap-2 text-sm text-gray-300 font-medium">
+                <Target size={18} color="#E53935" /> Attainment
               </div>
             </div>
-            <div className="stat-card">
-              <div className="stat-number">67%</div>
-              <div className="stat-label">
-                <Star size={16} color="#E53935" /> Avg Score
+            
+            {/* Stat Card 4 */}
+            <div className="bg-[#110c0b] border border-white/5 rounded-2xl py-8 px-4 flex flex-col items-center justify-center shadow-inner">
+              <div className="font-serif text-5xl mb-3 text-white">0%</div>
+              <div className="flex items-center gap-2 text-sm text-gray-300 font-medium">
+                <Star size={18} color="#E53935" /> Avg Score
               </div>
             </div>
           </div>
 
           {/* TABLE SECTION */}
-          <div className="table-container">
-            <table className="puzzle-table">
+          <div className="bg-[#110c0b] border border-white/5 rounded-2xl p-6 overflow-hidden">
+            <table className="w-full border-collapse text-left">
               <thead>
                 <tr>
-                  <th>Puzzles Name</th>
-                  <th>Attempts</th>
-                  <th>Avg Points</th>
-                  <th>Status</th>
+                  {/* FIXED: Aligned columns to match the design cleanly */}
+                  <th className="py-4 px-4 font-serif text-lg font-normal text-white border-b border-white/10">Puzzles Name</th>
+                  <th className="py-4 px-4 font-serif text-lg font-normal text-white border-b border-white/10 text-center">Attempts</th>
+                  <th className="py-4 px-4 font-serif text-lg font-normal text-white border-b border-white/10 text-center">Avg Points</th>
+                  <th className="py-4 px-4 font-serif text-lg font-normal text-white border-b border-white/10 text-center">Status</th>
                 </tr>
               </thead>
               <tbody>
                 {puzzleData.map((row, index) => (
-                  <tr key={index}>
-                    <td>{row.name}</td>
-                    <td>{row.attempts}</td>
-                    <td>{row.points}</td>
-                    <td>{row.status}</td>
+                  <tr key={index} className="hover:bg-white/5 transition-colors">
+                    <td className="py-4 px-4 text-gray-400 border-b border-white/5">{row.name}</td>
+                    <td className="py-4 px-4 text-gray-400 border-b border-white/5 text-center">{row.attempts}</td>
+                    <td className="py-4 px-4 text-gray-400 border-b border-white/5 text-center">{row.points}</td>
+                    <td className="py-4 px-4 text-gray-400 border-b border-white/5 text-center">{row.status}</td>
                   </tr>
                 ))}
               </tbody>
