@@ -5,14 +5,14 @@ import {
   Puzzle, Lightbulb, Target, Star, LogOut, PlusCircle 
 } from 'lucide-react';
 
-// Imported our custom components exactly once!
+// 🌟 FIXED IMPORTS: Now looking in the exact same folder (./) 🌟
 import CreatePuzzleForm from './CreatePuzzleForm';
 import CurrentStats from './CurrentStats'; 
-import Leaderboard from './Leaderboard'; // <-- Leaderboard imported here
+import Leaderboard from './Leaderboard'; 
+import Report from './Report'; 
 
 const Dashboard = () => {
   const navigate = useNavigate();
-  // 🌟 This state tracks which page we are looking at
   const [activeTab, setActiveTab] = useState('dashboard'); 
 
   const handleLogout = () => {
@@ -62,7 +62,7 @@ const Dashboard = () => {
             <span>Current Stats</span>
           </button>
 
-          {/* 🌟 FIXED: Scores / Leaderboard Button 🌟 */}
+          {/* Scores / Leaderboard Button */}
           <button 
             onClick={() => setActiveTab('scores')}
             className={`flex items-center gap-4 px-5 py-3 rounded-full transition-all w-full text-left ${activeTab === 'scores' ? 'bg-[#4a4a4a] text-white font-bold' : 'text-gray-300 hover:bg-white/5'}`}
@@ -71,10 +71,16 @@ const Dashboard = () => {
             <span>Scores</span>
           </button>
 
-          <a href="#" className="flex items-center gap-4 px-5 py-3 rounded-full text-gray-300 hover:bg-white/5 transition-all">
+          {/* Report Button */}
+          <button 
+            onClick={() => setActiveTab('report')}
+            className={`flex items-center gap-4 px-5 py-3 rounded-full transition-all w-full text-left ${activeTab === 'report' ? 'bg-[#4a4a4a] text-white font-bold' : 'text-gray-300 hover:bg-white/5'}`}
+          >
             <History size={20} />
             <span>Report</span>
-          </a>
+          </button>
+
+          {/* Reanalyse (Placeholder) */}
           <a href="#" className="flex items-center gap-4 px-5 py-3 rounded-full text-gray-300 hover:bg-white/5 transition-all">
             <RotateCcw size={20} />
             <span>Reanalyse</span>
@@ -92,7 +98,7 @@ const Dashboard = () => {
       </aside>
 
       {/* MAIN CONTENT AREA */}
-      <main className="flex-1 flex flex-col bg-[radial-gradient(circle_at_top_left,_#1a1010_0%,_#050505_100%)]">
+      <main className="flex-1 flex flex-col bg-[radial-gradient(circle_at_top_left,_#1a1010_0%,_#050505_100%)] overflow-y-auto">
         
         {/* TOP HEADER */}
         <header className="px-10 py-8 bg-gradient-to-r from-[#1f1816] to-[#0a0808] border-b border-white/5 flex items-center">
@@ -102,13 +108,11 @@ const Dashboard = () => {
           </div>
         </header>
 
-        {/* 🌟 DYNAMIC CONTENT PANEL 🌟 */}
+        {/* DYNAMIC CONTENT PANEL */}
         <div className="m-10 flex-1">
           
-          {/* Show this if 'dashboard' is active */}
           {activeTab === 'dashboard' && (
             <div className="bg-[#1e1514] rounded-3xl p-8 shadow-[0_10px_40px_rgba(0,0,0,0.6)] border border-white/5 h-full">
-              {/* STATS GRID */}
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-10">
                 <div className="bg-[#110c0b] border border-white/5 rounded-2xl py-8 px-4 flex flex-col items-center justify-center shadow-inner">
                   <div className="font-serif text-5xl mb-3 text-white">0</div>
@@ -136,7 +140,6 @@ const Dashboard = () => {
                 </div>
               </div>
 
-              {/* TABLE SECTION */}
               <div className="bg-[#110c0b] border border-white/5 rounded-2xl p-6 overflow-hidden">
                 <table className="w-full border-collapse text-left">
                   <thead>
@@ -162,24 +165,27 @@ const Dashboard = () => {
             </div>
           )}
 
-          {/* Show this if 'create' is active */}
           {activeTab === 'create' && (
             <div className="flex justify-center items-start pt-4 h-full w-full">
               <CreatePuzzleForm />
             </div>
           )}
 
-          {/* Show this if 'stats' is active */}
           {activeTab === 'stats' && (
             <div className="flex justify-center items-start pt-4 h-full w-full">
               <CurrentStats />
             </div>
           )}
 
-          {/* 🌟 NEW: Show this if 'scores' is active 🌟 */}
           {activeTab === 'scores' && (
             <div className="flex justify-center items-start pt-4 h-full w-full">
               <Leaderboard />
+            </div>
+          )}
+
+          {activeTab === 'report' && (
+            <div className="flex justify-center items-start pt-4 h-full w-full">
+              <Report />
             </div>
           )}
 
