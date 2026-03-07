@@ -1,10 +1,10 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Eye, EyeOff } from 'lucide-react'; // 1. Imported the eye icons
+import { Eye, EyeOff, User, Lock } from 'lucide-react';
 
 const LoginPage = () => {
   const [activeRole, setActiveRole] = useState('Teacher');
-  const [showPassword, setShowPassword] = useState(false); // 2. State for password toggle
+  const [showPassword, setShowPassword] = useState(false);
   const navigate = useNavigate();
 
   const handleLogin = (e) => {
@@ -13,95 +13,131 @@ const LoginPage = () => {
     navigate('/dashboard'); 
   };
 
+  // 🌟 DYNAMIC THEME CONFIGURATION 🌟
+  const isTeacher = activeRole === 'Teacher';
+  const theme = isTeacher ? {
+    color: 'text-[#E53935]',
+    bg: 'bg-[#E53935]',
+    glowText: 'drop-shadow-[0_0_20px_rgba(229,57,53,0.6)]',
+    glowBox: 'shadow-[0_0_20px_rgba(229,57,53,0.3)]',
+    glowBtn: 'hover:shadow-[0_8px_30px_rgba(229,57,53,0.5)]',
+    borderFocus: 'focus:border-[#E53935]',
+    bgFocus: 'focus:bg-[#E53935]/10',
+    btnHover: 'hover:bg-red-600',
+  } : {
+    color: 'text-[#3B82F6]',
+    bg: 'bg-[#3B82F6]',
+    glowText: 'drop-shadow-[0_0_20px_rgba(59,130,246,0.6)]',
+    glowBox: 'shadow-[0_0_20px_rgba(59,130,246,0.3)]',
+    glowBtn: 'hover:shadow-[0_8px_30px_rgba(59,130,246,0.5)]',
+    borderFocus: 'focus:border-[#3B82F6]',
+    bgFocus: 'focus:bg-[#3B82F6]/10',
+    btnHover: 'hover:bg-blue-600',
+  };
+
   return (
-    <div className="flex flex-col min-h-screen bg-[radial-gradient(circle_at_30%_50%,_#2a0a0a_0%,_#111111_60%)] text-white font-sans px-8 py-12 md:px-20 overflow-hidden box-border">
+    <div className="relative flex flex-col items-center justify-center min-h-screen bg-[#09090b] text-white font-sans overflow-hidden px-6 py-12 transition-colors duration-500">
       
-      {/* 🌟 TOP HEADER 🌟 */}
-      <div className="w-full mb-10 text-center lg:text-left">
-        <h1 className="text-5xl md:text-6xl font-extrabold m-0 tracking-tight leading-tight drop-shadow-[0_4px_10px_rgba(0,0,0,0.5)]">
-          Cro<span className="text-[var(--color-crox-red)] drop-shadow-[0_0_15px_rgba(229,57,53,0.6)]">X</span>word Puzzle Generator
+      {/* 🌟 REDESIGNED AMBIENT BACKGROUND GLOW 🌟 */}
+      {/* Top Left Ambient Light */}
+      <div className={`absolute top-[-20%] left-[-10%] w-[60vw] h-[60vw] rounded-full mix-blend-screen opacity-10 blur-[130px] pointer-events-none transition-colors duration-700 ease-in-out ${theme.bg}`}></div>
+      {/* Bottom Right Ambient Light */}
+      <div className={`absolute bottom-[-20%] right-[-10%] w-[60vw] h-[60vw] rounded-full mix-blend-screen opacity-[0.07] blur-[130px] pointer-events-none transition-colors duration-700 ease-in-out ${theme.bg}`}></div>
+      
+      {/* Fading Crossword-style Tech Grid */}
+      <div className="absolute inset-0 bg-[linear-gradient(to_right,#ffffff05_1px,transparent_1px),linear-gradient(to_bottom,#ffffff05_1px,transparent_1px)] bg-[size:4rem_4rem] [mask-image:radial-gradient(ellipse_80%_80%_at_50%_50%,#000_60%,transparent_100%)] pointer-events-none"></div>
+
+      {/* 🌟 CENTERED HEADER 🌟 */}
+      <div className="relative z-10 w-full max-w-2xl text-center mb-12 mt-[-4vh]">
+        <h1 className="text-6xl md:text-7xl font-extrabold m-0 tracking-tighter leading-tight drop-shadow-xl">
+          Cro<span className={`transition-all duration-500 ease-in-out ${theme.color} ${theme.glowText}`}>X</span>word
         </h1>
-        <h2 className="text-3xl md:text-4xl text-[var(--color-crox-red)] mt-3 mb-3 font-semibold">
-          & Assessment Platform
+        <h2 className="text-xl md:text-2xl text-gray-300 mt-4 mb-3 font-medium tracking-wide">
+          Puzzle Generator & Assessment
         </h2>
-        <p className="text-lg md:text-xl text-gray-400 tracking-wide mt-1">
+        <p className="text-base text-gray-500 tracking-wide font-light">
           From Clues to Grades — Seamlessly.
         </p>
       </div>
 
-      {/* 🌟 MAIN CONTENT 🌟 */}
-      <div className="flex flex-col lg:flex-row w-full items-center lg:items-start justify-between flex-1 gap-12 lg:gap-0">
+      {/* 🌟 CENTERED GLASSMORPHISM LOGIN BOX 🌟 */}
+      <div className="relative z-10 w-full max-w-[500px]">
+        {/* Outer glow for the box */}
+        <div className={`absolute -inset-0.5 bg-gradient-to-b from-white/10 to-transparent rounded-[2.5rem] blur-sm opacity-50 transition-all duration-500`}></div>
         
-        {/* LEFT COLUMN: The Login Form */}
-        <div className="flex-1 flex flex-col w-full max-w-md relative z-10">
+        {/* Actual Form Box */}
+        <div className="relative bg-[#0a0a0a]/80 backdrop-blur-2xl border border-white/10 rounded-[2.5rem] p-10 md:p-12 shadow-[0_20px_60px_-15px_rgba(0,0,0,0.9)]">
           
-          <div className="bg-gradient-to-br from-[#E53935]/15 to-[#141414]/60 backdrop-blur-xl border border-white/5 border-t-white/15 border-l-white/15 shadow-[0_8px_32px_0_rgba(229,57,53,0.25)] rounded-3xl p-10 w-full box-border transition-all duration-300 ease-in-out hover:-translate-y-1 hover:shadow-[0_15px_40px_0_rgba(229,57,53,0.35)]">
-            
-            {/* Toggle Switch */}
-            <div className="flex bg-black/40 rounded-full p-1.5 mb-8 border border-white/5">
-              <button 
-                type="button"
-                className={`flex-1 bg-transparent border-none py-3 rounded-full text-base transition-all duration-300 ${activeRole === 'Teacher' ? 'bg-[var(--color-crox-red)] text-white font-bold shadow-[0_4px_15px_rgba(229,57,53,0.4)]' : 'text-gray-400 hover:text-white font-medium cursor-pointer'}`}
-                onClick={() => setActiveRole('Teacher')}
-              >
-                Teacher
-              </button>
-              <button 
-                type="button"
-                className={`flex-1 bg-transparent border-none py-3 rounded-full text-base transition-all duration-300 ${activeRole === 'Student' ? 'bg-[var(--color-crox-red)] text-white font-bold shadow-[0_4px_15px_rgba(229,57,53,0.4)]' : 'text-gray-400 hover:text-white font-medium cursor-pointer'}`}
-                onClick={() => setActiveRole('Student')}
-              >
-                Student
-              </button>
-            </div>
+          {/* Toggle Switch */}
+          <div className="flex bg-black/60 rounded-full p-2 mb-10 border border-white/5 relative shadow-inner">
+            <button 
+              type="button"
+              className={`flex-1 bg-transparent border-none py-3 rounded-full text-base tracking-wider transition-all duration-300 z-10 ${isTeacher ? 'text-white font-bold' : 'text-gray-500 hover:text-gray-300 font-medium cursor-pointer'}`}
+              onClick={() => setActiveRole('Teacher')}
+            >
+              Teacher
+            </button>
+            <button 
+              type="button"
+              className={`flex-1 bg-transparent border-none py-3 rounded-full text-base tracking-wider transition-all duration-300 z-10 ${!isTeacher ? 'text-white font-bold' : 'text-gray-500 hover:text-gray-300 font-medium cursor-pointer'}`}
+              onClick={() => setActiveRole('Student')}
+            >
+              Student
+            </button>
+            {/* Dynamic sliding indicator */}
+            <div className={`absolute top-2 bottom-2 w-[calc(50%-8px)] rounded-full transition-all duration-500 cubic-bezier(0.4, 0, 0.2, 1) ${theme.bg} ${theme.glowBox} ${isTeacher ? 'translate-x-0' : 'translate-x-[calc(100%+8px)]'}`}></div>
+          </div>
 
-            {/* Login Form Inputs */}
-            <form onSubmit={handleLogin} className="flex flex-col gap-6">
+          {/* Login Form Inputs */}
+          <form onSubmit={handleLogin} className="flex flex-col gap-6">
+            
+            {/* ID Input Wrapper */}
+            <div className="relative w-full group">
+              <User className={`absolute left-5 top-1/2 -translate-y-1/2 transition-colors duration-300 ${isTeacher ? 'text-gray-500 group-focus-within:text-[#E53935]' : 'text-gray-500 group-focus-within:text-[#3B82F6]'}`} size={22} />
               <input 
                 type="text" 
-                placeholder="Enter Registration Number" 
-                className="w-full bg-black/50 border border-white/5 rounded-xl p-4 text-white text-base transition-all duration-300 shadow-inner placeholder:text-gray-500 focus:outline-none focus:border-[var(--color-crox-red)] focus:bg-[#E53935]/5 focus:shadow-[0_0_15px_rgba(229,57,53,0.2)]"
+                placeholder={isTeacher ? "Teacher ID" : "Student Registration Number"} 
+                className={`w-full bg-[#141414] border border-white/10 rounded-xl p-5 pl-14 text-white text-base transition-all duration-300 placeholder:text-gray-600 focus:outline-none ${theme.borderFocus} ${theme.bgFocus}`}
                 required
               />
-              
-              {/* 3. Password Input Wrapper with Eye Icon */}
-              <div className="relative w-full">
-                <input 
-                  type={showPassword ? "text" : "password"} 
-                  placeholder="Password" 
-                  className="w-full bg-black/50 border border-white/5 rounded-xl p-4 pr-12 text-white text-base transition-all duration-300 shadow-inner placeholder:text-gray-500 focus:outline-none focus:border-[var(--color-crox-red)] focus:bg-[#E53935]/5 focus:shadow-[0_0_15px_rgba(229,57,53,0.2)]"
-                  required
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-500 hover:text-[var(--color-crox-red)] transition-colors cursor-pointer"
-                >
-                  {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
-                </button>
-              </div>
-              
-              <button type="submit" className="bg-transparent text-[var(--color-crox-red)] border-2 border-[var(--color-crox-red)] rounded-full py-3.5 px-6 text-lg font-bold cursor-pointer mt-4 transition-all duration-300 w-[60%] self-center hover:bg-[var(--color-crox-red)] hover:text-white hover:shadow-[0_0_20px_rgba(229,57,53,0.6)] hover:scale-105">
-                Sign In
+            </div>
+            
+            {/* Password Input Wrapper */}
+            <div className="relative w-full group">
+              <Lock className={`absolute left-5 top-1/2 -translate-y-1/2 transition-colors duration-300 ${isTeacher ? 'text-gray-500 group-focus-within:text-[#E53935]' : 'text-gray-500 group-focus-within:text-[#3B82F6]'}`} size={22} />
+              <input 
+                type={showPassword ? "text" : "password"} 
+                placeholder="Password" 
+                className={`w-full bg-[#141414] border border-white/10 rounded-xl p-5 pl-14 pr-12 text-white text-base transition-all duration-300 placeholder:text-gray-600 focus:outline-none ${theme.borderFocus} ${theme.bgFocus}`}
+                required
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className={`absolute right-5 top-1/2 -translate-y-1/2 text-gray-500 transition-colors cursor-pointer ${isTeacher ? 'hover:text-[#E53935]' : 'hover:text-[#3B82F6]'}`}
+              >
+                {showPassword ? <EyeOff size={22} /> : <Eye size={22} />}
               </button>
-            </form>
-          </div>
-          
-          <div className="mt-6 text-gray-500 text-sm text-center lg:text-left">Users & Roles</div>
-        </div>
+            </div>
+            
+            {/* Cleaned up Submit Button */}
+            <button 
+              type="submit" 
+              className={`text-white border-none rounded-xl py-5 mt-4 text-base font-bold tracking-widest uppercase cursor-pointer transition-all duration-500 w-full hover:-translate-y-1 active:translate-y-0 ${theme.bg} ${theme.btnHover} ${theme.glowBtn}`}
+            >
+              Sign In
+            </button>
+          </form>
 
-        {/* RIGHT COLUMN: The Hero Image */}
-        <div className="flex-[1.2] flex items-center justify-center lg:justify-end relative z-0 w-full mt-10 lg:mt-0">
-          <div className="w-full max-w-[520px]">
-             <img 
-               src="/Crossword_grid.jpg" 
-               alt="Crossword Platform Preview" 
-               className="w-full h-auto object-contain rounded-2xl drop-shadow-[0_20px_30px_rgba(0,0,0,0.8)] animate-[float_6s_ease-in-out_infinite]" 
-             />
+          {/* Bottom links */}
+          <div className="mt-8 flex justify-between text-sm text-gray-500 font-medium">
+            <a href="#" className={`transition-colors duration-300 ${isTeacher ? 'hover:text-[#E53935]' : 'hover:text-[#3B82F6]'}`}>Forgot Password?</a>
+            <a href="#" className={`transition-colors duration-300 ${isTeacher ? 'hover:text-[#E53935]' : 'hover:text-[#3B82F6]'}`}>Contact Admin</a>
           </div>
-        </div>
 
+        </div>
       </div>
+      
     </div>
   );
 };
