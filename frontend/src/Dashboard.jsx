@@ -1,11 +1,25 @@
-import React from 'react';
+import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { 
   Search, LayoutDashboard, List, Bell, History, RotateCcw, 
-  Puzzle, Lightbulb, Target, Star 
+  Puzzle, Lightbulb, Target, Star, LogOut, PlusCircle 
 } from 'lucide-react';
 
+// Imported our custom components exactly once!
+import CreatePuzzleForm from './CreatePuzzleForm';
+import CurrentStats from './CurrentStats'; 
+import Leaderboard from './Leaderboard'; // <-- Leaderboard imported here
+
 const Dashboard = () => {
-  // FIXED: Reset all table data to empty/zero states
+  const navigate = useNavigate();
+  // 🌟 This state tracks which page we are looking at
+  const [activeTab, setActiveTab] = useState('dashboard'); 
+
+  const handleLogout = () => {
+    console.log("Signing out...");
+    navigate('/'); 
+  };
+
   const puzzleData = [
     { name: '-', attempts: 0, points: '0%', status: '-' },
     { name: '-', attempts: 0, points: '0%', status: '-' },
@@ -18,22 +32,45 @@ const Dashboard = () => {
       
       {/* SIDEBAR */}
       <aside className="w-[260px] bg-[#0f0a0a] p-8 border-r border-[#221515] flex flex-col">
-        {/* FIXED: Added elegant serif font */}
         <h2 className="font-serif italic text-3xl mb-10 pl-2 text-gray-100">Dashboard</h2>
         
         <nav className="flex flex-col gap-3">
-          <a href="#" className="flex items-center gap-4 px-5 py-3 rounded-full bg-[#4a4a4a] text-white font-bold transition-all">
+          {/* Dashboard Button */}
+          <button 
+            onClick={() => setActiveTab('dashboard')}
+            className={`flex items-center gap-4 px-5 py-3 rounded-full transition-all w-full text-left ${activeTab === 'dashboard' ? 'bg-[#4a4a4a] text-white font-bold' : 'text-gray-300 hover:bg-white/5'}`}
+          >
             <LayoutDashboard size={20} />
             <span>Dashboard</span>
-          </a>
-          <a href="#" className="flex items-center gap-4 px-5 py-3 rounded-full text-gray-300 hover:bg-white/5 transition-all">
+          </button>
+
+          {/* Create Puzzle Button */}
+          <button 
+            onClick={() => setActiveTab('create')}
+            className={`flex items-center gap-4 px-5 py-3 rounded-full transition-all w-full text-left ${activeTab === 'create' ? 'bg-[#4a4a4a] text-white font-bold' : 'text-gray-300 hover:bg-white/5'}`}
+          >
+            <PlusCircle size={20} />
+            <span>Create Puzzle</span>
+          </button>
+
+          {/* Current Stats Button */}
+          <button 
+            onClick={() => setActiveTab('stats')}
+            className={`flex items-center gap-4 px-5 py-3 rounded-full transition-all w-full text-left ${activeTab === 'stats' ? 'bg-[#4a4a4a] text-white font-bold' : 'text-gray-300 hover:bg-white/5'}`}
+          >
             <List size={20} />
             <span>Current Stats</span>
-          </a>
-          <a href="#" className="flex items-center gap-4 px-5 py-3 rounded-full text-gray-300 hover:bg-white/5 transition-all">
+          </button>
+
+          {/* 🌟 FIXED: Scores / Leaderboard Button 🌟 */}
+          <button 
+            onClick={() => setActiveTab('scores')}
+            className={`flex items-center gap-4 px-5 py-3 rounded-full transition-all w-full text-left ${activeTab === 'scores' ? 'bg-[#4a4a4a] text-white font-bold' : 'text-gray-300 hover:bg-white/5'}`}
+          >
             <Bell size={20} />
             <span>Scores</span>
-          </a>
+          </button>
+
           <a href="#" className="flex items-center gap-4 px-5 py-3 rounded-full text-gray-300 hover:bg-white/5 transition-all">
             <History size={20} />
             <span>Report</span>
@@ -43,6 +80,15 @@ const Dashboard = () => {
             <span>Reanalyse</span>
           </a>
         </nav>
+
+        {/* SIGN OUT BUTTON */}
+        <button 
+          onClick={handleLogout}
+          className="flex items-center gap-4 px-5 py-3 mt-auto rounded-full text-red-400 hover:bg-red-500/10 hover:text-red-300 transition-all font-medium w-full text-left"
+        >
+          <LogOut size={20} />
+          <span>Sign Out</span>
+        </button>
       </aside>
 
       {/* MAIN CONTENT AREA */}
@@ -56,70 +102,86 @@ const Dashboard = () => {
           </div>
         </header>
 
-        {/* DASHBOARD CONTENT PANEL */}
-        {/* FIXED: Adjusted the dark maroon/brown box shadow and background */}
-        <div className="m-10 bg-[#1e1514] rounded-3xl p-8 flex-1 shadow-[0_10px_40px_rgba(0,0,0,0.6)] border border-white/5">
+        {/* 🌟 DYNAMIC CONTENT PANEL 🌟 */}
+        <div className="m-10 flex-1">
           
-          {/* STATS GRID */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-10">
-            {/* Stat Card 1 */}
-            <div className="bg-[#110c0b] border border-white/5 rounded-2xl py-8 px-4 flex flex-col items-center justify-center shadow-inner">
-              {/* FIXED: Values set to 0, applied Serif font */}
-              <div className="font-serif text-5xl mb-3 text-white">0</div>
-              <div className="flex items-center gap-2 text-sm text-gray-300 font-medium">
-                <Puzzle size={18} color="#E53935" /> Total Puzzles
+          {/* Show this if 'dashboard' is active */}
+          {activeTab === 'dashboard' && (
+            <div className="bg-[#1e1514] rounded-3xl p-8 shadow-[0_10px_40px_rgba(0,0,0,0.6)] border border-white/5 h-full">
+              {/* STATS GRID */}
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-10">
+                <div className="bg-[#110c0b] border border-white/5 rounded-2xl py-8 px-4 flex flex-col items-center justify-center shadow-inner">
+                  <div className="font-serif text-5xl mb-3 text-white">0</div>
+                  <div className="flex items-center gap-2 text-sm text-gray-300 font-medium">
+                    <Puzzle size={18} color="#E53935" /> Total Puzzles
+                  </div>
+                </div>
+                <div className="bg-[#110c0b] border border-white/5 rounded-2xl py-8 px-4 flex flex-col items-center justify-center shadow-inner">
+                  <div className="font-serif text-5xl mb-3 text-white">0</div>
+                  <div className="flex items-center gap-2 text-sm text-gray-300 font-medium">
+                    <Lightbulb size={18} color="#E53935" /> Assistances
+                  </div>
+                </div>
+                <div className="bg-[#110c0b] border border-white/5 rounded-2xl py-8 px-4 flex flex-col items-center justify-center shadow-inner">
+                  <div className="font-serif text-5xl mb-3 text-white">0%</div>
+                  <div className="flex items-center gap-2 text-sm text-gray-300 font-medium">
+                    <Target size={18} color="#E53935" /> Attainment
+                  </div>
+                </div>
+                <div className="bg-[#110c0b] border border-white/5 rounded-2xl py-8 px-4 flex flex-col items-center justify-center shadow-inner">
+                  <div className="font-serif text-5xl mb-3 text-white">0%</div>
+                  <div className="flex items-center gap-2 text-sm text-gray-300 font-medium">
+                    <Star size={18} color="#E53935" /> Avg Score
+                  </div>
+                </div>
               </div>
-            </div>
-            
-            {/* Stat Card 2 */}
-            <div className="bg-[#110c0b] border border-white/5 rounded-2xl py-8 px-4 flex flex-col items-center justify-center shadow-inner">
-              <div className="font-serif text-5xl mb-3 text-white">0</div>
-              <div className="flex items-center gap-2 text-sm text-gray-300 font-medium">
-                <Lightbulb size={18} color="#E53935" /> Assistances
-              </div>
-            </div>
-            
-            {/* Stat Card 3 */}
-            <div className="bg-[#110c0b] border border-white/5 rounded-2xl py-8 px-4 flex flex-col items-center justify-center shadow-inner">
-              <div className="font-serif text-5xl mb-3 text-white">0%</div>
-              <div className="flex items-center gap-2 text-sm text-gray-300 font-medium">
-                <Target size={18} color="#E53935" /> Attainment
-              </div>
-            </div>
-            
-            {/* Stat Card 4 */}
-            <div className="bg-[#110c0b] border border-white/5 rounded-2xl py-8 px-4 flex flex-col items-center justify-center shadow-inner">
-              <div className="font-serif text-5xl mb-3 text-white">0%</div>
-              <div className="flex items-center gap-2 text-sm text-gray-300 font-medium">
-                <Star size={18} color="#E53935" /> Avg Score
-              </div>
-            </div>
-          </div>
 
-          {/* TABLE SECTION */}
-          <div className="bg-[#110c0b] border border-white/5 rounded-2xl p-6 overflow-hidden">
-            <table className="w-full border-collapse text-left">
-              <thead>
-                <tr>
-                  {/* FIXED: Aligned columns to match the design cleanly */}
-                  <th className="py-4 px-4 font-serif text-lg font-normal text-white border-b border-white/10">Puzzles Name</th>
-                  <th className="py-4 px-4 font-serif text-lg font-normal text-white border-b border-white/10 text-center">Attempts</th>
-                  <th className="py-4 px-4 font-serif text-lg font-normal text-white border-b border-white/10 text-center">Avg Points</th>
-                  <th className="py-4 px-4 font-serif text-lg font-normal text-white border-b border-white/10 text-center">Status</th>
-                </tr>
-              </thead>
-              <tbody>
-                {puzzleData.map((row, index) => (
-                  <tr key={index} className="hover:bg-white/5 transition-colors">
-                    <td className="py-4 px-4 text-gray-400 border-b border-white/5">{row.name}</td>
-                    <td className="py-4 px-4 text-gray-400 border-b border-white/5 text-center">{row.attempts}</td>
-                    <td className="py-4 px-4 text-gray-400 border-b border-white/5 text-center">{row.points}</td>
-                    <td className="py-4 px-4 text-gray-400 border-b border-white/5 text-center">{row.status}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+              {/* TABLE SECTION */}
+              <div className="bg-[#110c0b] border border-white/5 rounded-2xl p-6 overflow-hidden">
+                <table className="w-full border-collapse text-left">
+                  <thead>
+                    <tr>
+                      <th className="py-4 px-4 font-serif text-lg font-normal text-white border-b border-white/10">Puzzles Name</th>
+                      <th className="py-4 px-4 font-serif text-lg font-normal text-white border-b border-white/10 text-center">Attempts</th>
+                      <th className="py-4 px-4 font-serif text-lg font-normal text-white border-b border-white/10 text-center">Avg Points</th>
+                      <th className="py-4 px-4 font-serif text-lg font-normal text-white border-b border-white/10 text-center">Status</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {puzzleData.map((row, index) => (
+                      <tr key={index} className="hover:bg-white/5 transition-colors">
+                        <td className="py-4 px-4 text-gray-400 border-b border-white/5">{row.name}</td>
+                        <td className="py-4 px-4 text-gray-400 border-b border-white/5 text-center">{row.attempts}</td>
+                        <td className="py-4 px-4 text-gray-400 border-b border-white/5 text-center">{row.points}</td>
+                        <td className="py-4 px-4 text-gray-400 border-b border-white/5 text-center">{row.status}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
+          {/* Show this if 'create' is active */}
+          {activeTab === 'create' && (
+            <div className="flex justify-center items-start pt-4 h-full w-full">
+              <CreatePuzzleForm />
+            </div>
+          )}
+
+          {/* Show this if 'stats' is active */}
+          {activeTab === 'stats' && (
+            <div className="flex justify-center items-start pt-4 h-full w-full">
+              <CurrentStats />
+            </div>
+          )}
+
+          {/* 🌟 NEW: Show this if 'scores' is active 🌟 */}
+          {activeTab === 'scores' && (
+            <div className="flex justify-center items-start pt-4 h-full w-full">
+              <Leaderboard />
+            </div>
+          )}
 
         </div>
       </main>
