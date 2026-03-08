@@ -7,10 +7,11 @@ const LoginPage = () => {
   const [showPassword, setShowPassword] = useState(false);
   const navigate = useNavigate();
 
-  const handleLogin = (e) => {
+const handleLogin = (e) => {
     e.preventDefault();
     console.log(`Logging in as ${activeRole}`);
-    navigate('/dashboard'); 
+    // 🌟 WE ADDED STATE HERE! This passes the role to the next page 🌟
+    navigate('/dashboard', { state: { role: activeRole } }); 
   };
 
   // 🌟 DYNAMIC THEME CONFIGURATION 🌟
