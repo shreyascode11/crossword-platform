@@ -1,13 +1,30 @@
 from collections import defaultdict
 import csv
 import io
+import json
 import logging
+import os
+import re
 
 from django.contrib.auth import authenticate
 from django.http import HttpResponse
 from rest_framework.decorators import api_view, parser_classes
 from rest_framework.parsers import FormParser, MultiPartParser
 from rest_framework.response import Response
+
+from groq import Groq
+
+try:
+    import pdfplumber  # type: ignore
+    PDFPLUMBER_AVAILABLE = True
+except ImportError:
+    PDFPLUMBER_AVAILABLE = False
+
+try:
+    from docx import Document  # type: ignore
+    DOCX_AVAILABLE = True
+except ImportError:
+    DOCX_AVAILABLE = False
 
 from .crossword_layout import (
     compute_difficulty_from_metrics,
@@ -22,6 +39,104 @@ logger = logging.getLogger(__name__)
 
 MIN_ANSWER_LENGTH = 3
 MAX_ANSWER_LENGTH = 25
+MAX_UPLOAD_BYTES = 5 * 1024 * 1024
+
+
+
+
+def _extract_text_from_upload(upload):
+    if not upload:
+        raise ValueError("File is required")
+    if upload.size and upload.size > MAX_UPLOAD_BYTES:
+        raise ValueError("File too large. Maximum size is 5MB.")
+
+    filename = (upload.name or "").lower()
+    if filename.endswith(".pdf"):
+        if not PDFPLUMBER_AVAILABLE:
+            raise ImportError("pdfplumber is not installed")
+        text_chunks = []
+        with pdfplumber.open(upload) as pdf:
+            for page in pdf.pages:
+                page_text = page.extract_text()
+                if page_text:
+                    text_chunks.append(page_text)
+        return "\n".join(text_chunks).strip()
+    if filename.endswith(".docx") or filename.endswith(".doc"):
+        if not DOCX_AVAILABLE:
+            raise ImportError("python-docx is not installed")
+        doc = Document(upload)
+        return "\n".join([p.text for p in doc.paragraphs if p.text.strip()]).strip()
+
+    raise ValueError("Unsupported file type. Upload PDF or DOCX only.")
+
+
+def generate_clues_with_groq(text, difficulty, num_questions, topic_hint=None):
+    client = Groq(api_key=os.environ.get("GROQ_API_KEY"))
+
+    topic_line = f"Focus on this topic if present: {topic_hint}" if topic_hint else ""
+    requested_total = num_questions * 2
+
+    prompt = f"""
+You are a crossword puzzle generator.
+Given the following text, generate {requested_total} crossword clue-answer pairs.
+Difficulty: {difficulty}
+{topic_line}
+
+Rules:
+- Each answer must be a single word (no spaces)
+- Minimum answer length: 3 characters
+- Answers must be real words from the text
+- Clues must match the difficulty:
+  Easy: fill-in-the-blank or direct definition
+  Medium: indirect or contextual clue
+  Hard: cryptic or inferential clue
+- Return ONLY a valid JSON array, no explanation, no markdown, no code blocks
+- Format exactly:
+[
+  {{"word": "ANSWER", "clue": "Clue text here"}},
+  ...
+]
+
+Text:
+{text[:4000]}
+"""
+
+    try:
+        response = client.chat.completions.create(
+            model="llama-3.3-70b-versatile",
+            messages=[{"role": "user", "content": prompt}],
+            temperature=0.7,
+            max_tokens=1000,
+        )
+        raw = response.choices[0].message.content.strip()
+
+        if raw.startswith("```"):
+            raw = raw.split("```")[1]
+            if raw.startswith("json"):
+                raw = raw[4:]
+        raw = raw.strip()
+
+        return json.loads(raw)
+
+    except json.JSONDecodeError:
+        try:
+            response = client.chat.completions.create(
+                model="llama-3.3-70b-versatile",
+                messages=[
+                    {"role": "user", "content": prompt},
+                    {"role": "assistant", "content": "Here is the JSON array:"},
+                ],
+                temperature=0.3,
+                max_tokens=1000,
+            )
+            raw = response.choices[0].message.content.strip()
+            if raw.startswith("```"):
+                raw = raw.split("```")[1]
+                if raw.startswith("json"):
+                    raw = raw[4:]
+            return json.loads(raw.strip())
+        except Exception as exc:
+            raise Exception(f"AI generation failed: {str(exc)}")
 
 
 def _normalize_answer(raw_answer):
@@ -538,6 +653,129 @@ def create_puzzle(request):
     )
     response_data = PuzzleSerializer(puzzle, context={"role": "Teacher"}).data
     logger.warning("create_puzzle success puzzle_id=%s status=%s", puzzle.id, puzzle.status)
+    return Response(response_data, status=201)
+
+
+@api_view(["POST"])
+@parser_classes([MultiPartParser, FormParser])
+def generate_from_document(request):
+    api_key = os.environ.get("GROQ_API_KEY")
+    if not api_key:
+        return Response(
+            {"error": "Groq API key not configured. Set GROQ_API_KEY environment variable."},
+            status=500,
+        )
+
+    teacher_id = (request.data.get("teacher_id") or "").strip()
+    puzzle_title = (request.data.get("puzzle_title") or "").strip()
+    difficulty = (request.data.get("difficulty") or "medium").lower()
+    num_questions = int(request.data.get("num_questions") or 0)
+    topic_hint = (request.data.get("topic_hint") or "").strip()
+    upload = request.FILES.get("file")
+
+    if not teacher_id:
+        return Response({"error": "teacher_id is required"}, status=400)
+    if not puzzle_title:
+        return Response({"error": "puzzle_title is required"}, status=400)
+    if difficulty not in {"easy", "medium", "hard"}:
+        return Response({"error": "Invalid difficulty"}, status=400)
+    if num_questions < 5 or num_questions > 20:
+        return Response({"error": "num_questions must be between 5 and 20"}, status=400)
+
+    try:
+        teacher = Teacher.objects.get(teacher_id=teacher_id)
+    except Teacher.DoesNotExist:
+        return Response({"error": "Teacher not found"}, status=404)
+
+    try:
+        text = _extract_text_from_upload(upload)
+    except ValueError as exc:
+        return Response({"error": str(exc)}, status=400)
+
+    if not text:
+        return Response({"error": "Could not extract text from document"}, status=400)
+
+    try:
+        pairs = generate_clues_with_groq(text, difficulty, num_questions, topic_hint or None)
+    except Exception as exc:
+        return Response({"error": str(exc)}, status=500)
+
+    if not isinstance(pairs, list) or len(pairs) == 0:
+        return Response(
+            {"error": "Document does not contain enough usable content. Please upload a more detailed document."},
+            status=400,
+        )
+
+    cleaned = []
+    seen = set()
+    for item in pairs:
+        if not isinstance(item, dict):
+            continue
+        raw_word = str(item.get("word") or "").strip()
+        if not raw_word:
+            continue
+        if not re.fullmatch(r"[A-Za-z]+", raw_word):
+            continue
+        if len(raw_word) < MIN_ANSWER_LENGTH:
+            continue
+        word = raw_word.upper()
+        if word in seen:
+            continue
+        clue = (item.get("clue") or "").strip()
+        if not clue:
+            continue
+        cleaned.append((word, clue))
+        seen.add(word)
+
+    if len(cleaned) == 0:
+        return Response(
+            {"error": "Document does not contain enough usable content. Please upload a more detailed document."},
+            status=400,
+        )
+
+    cleaned.sort(key=lambda item: len(item[0]), reverse=True)
+    words_to_try = cleaned[:num_questions]
+
+    puzzle = Puzzle.objects.create(
+        title=puzzle_title,
+        teacher=teacher,
+        status="draft",
+        difficulty=difficulty,
+        validation_mode="on_submit",
+    )
+
+    layout_success = False
+    while len(words_to_try) >= 3:
+        Clue.objects.filter(puzzle=puzzle).delete()
+        for word, clue_text in words_to_try:
+            Clue.objects.create(
+                puzzle=puzzle,
+                question=clue_text,
+                answer=word,
+                row=0,
+                col=0,
+                direction="across",
+            )
+        try:
+            _regenerate_layout(puzzle)
+            layout_success = True
+            break
+        except Exception:
+            words_to_try = words_to_try[:-2]
+
+    if not layout_success:
+        puzzle.delete()
+        return Response(
+            {"error": "Could not generate a valid crossword. Please try a different document or reduce number of questions."},
+            status=500,
+        )
+
+    response_data = PuzzleSerializer(puzzle, context={"role": "Teacher"}).data
+    if len(words_to_try) < num_questions:
+        response_data["warning"] = (
+            f"Only {len(words_to_try)} words could be fitted. "
+            "Try uploading a more detailed document for more questions."
+        )
     return Response(response_data, status=201)
 
 
