@@ -71,6 +71,7 @@ const CrosswordPlayer = ({
   const [activeClueId, setActiveClueId] = useState(null);
   const [pageVisible, setPageVisible] = useState(true);
   const boardRef = useRef(null);
+  const lastPuzzleIdRef = useRef(null);
 
   const puzzleClues = useMemo(
     () => (Array.isArray(selectedPuzzle?.clues) ? selectedPuzzle.clues : []),
@@ -268,6 +269,7 @@ const CrosswordPlayer = ({
   );
 
   useEffect(() => {
+    const puzzleId = selectedPuzzle?.id ?? null;
     if (!selectedPuzzle || !Array.isArray(selectedPuzzle.clues)) {
       setAnswers({});
       setWordValidation({});
@@ -282,8 +284,11 @@ const CrosswordPlayer = ({
       setHintWordsUsed(0);
       setSubmitResult(null);
       setExistingAttempt(null);
+      lastPuzzleIdRef.current = null;
       return;
     }
+    if (lastPuzzleIdRef.current === puzzleId) return;
+    lastPuzzleIdRef.current = puzzleId;
 
     const nextAnswers = {};
     selectedPuzzle.clues.forEach((clue) => {
@@ -308,7 +313,7 @@ const CrosswordPlayer = ({
       setActiveDirection(firstClue.direction);
       setActiveCell({ row: firstClue.row, col: firstClue.col });
     }
-  }, [selectedPuzzle, orderedClues]);
+  }, [selectedPuzzle?.id, orderedClues]);
 
   useEffect(() => {
     let mounted = true;
