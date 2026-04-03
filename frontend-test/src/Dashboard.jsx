@@ -917,6 +917,7 @@ const Dashboard = () => {
             <div className="flex justify-center items-start pt-4 h-full w-full">
               {selectedPuzzle ? (
                 <CrosswordPlayer
+                  key={selectedPuzzle.id}
                   selectedPuzzle={selectedPuzzle}
                   allPuzzles={puzzles}
                   onPuzzleSubmitted={handlePuzzleSubmitted}

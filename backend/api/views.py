@@ -74,7 +74,7 @@ def generate_clues_with_groq(text, difficulty, num_questions, topic_hint=None):
     client = Groq(api_key=os.environ.get("GROQ_API_KEY"))
 
     topic_line = f"Focus on this topic if present: {topic_hint}" if topic_hint else ""
-    requested_total = num_questions + 5
+    requested_total = num_questions * 2
 
     prompt = f"""
 You are a crossword puzzle generator.
@@ -772,7 +772,10 @@ def generate_from_document(request):
 
     response_data = PuzzleSerializer(puzzle, context={"role": "Teacher"}).data
     if len(words_to_try) < num_questions:
-        response_data["warning"] = "Fewer valid terms were found than requested."
+        response_data["warning"] = (
+            f"Only {len(words_to_try)} words could be fitted. "
+            "Try uploading a more detailed document for more questions."
+        )
     return Response(response_data, status=201)
 
 

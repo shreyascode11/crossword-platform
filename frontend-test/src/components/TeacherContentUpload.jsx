@@ -314,7 +314,9 @@ const TeacherContentUpload = ({ onPuzzlePublished, activePuzzleId: activePuzzleI
                       </div>
                     ) : (
                       <div className="flex items-center justify-between gap-2">
-                        <span>{clue.number}. {clue.clue || clue.question} ({clue.answer_length})</span>
+                        <span>
+                          {clue.number}. {clue.clue || clue.question} → {(clue.answer || '').toUpperCase()} ({clue.answer_length})
+                        </span>
                         <div className="flex gap-1">
                           <button type="button" onClick={() => startEditClue(clue)} disabled={!isDraft} className="text-xs bg-blue-700 px-2 py-1 rounded">Edit</button>
                           <button type="button" onClick={() => handleDeleteClue(clue.id)} disabled={!isDraft} className="text-xs bg-red-700 px-2 py-1 rounded">Delete</button>
