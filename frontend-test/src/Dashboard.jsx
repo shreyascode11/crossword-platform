@@ -1,4 +1,4 @@
- import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { 
   Search, LayoutDashboard, List, Bell, History, RotateCcw, 
@@ -435,23 +435,23 @@ const Dashboard = () => {
   return (
     <div className="flex min-h-screen bg-[#050505] text-white font-sans">
       {/* SIDEBAR */}
-      <aside className="w-[260px] bg-[#0f0a0a] p-8 border-r border-[#221515] flex flex-col">
-        <div>
-          <h2 className="font-serif italic text-3xl mb-2 pl-2 text-gray-100">
+      <aside className="w-[272px] shrink-0 bg-gradient-to-b from-[#0d0a0a] via-[#0a0808] to-[#080606] p-8 border-r border-white/[0.06] flex flex-col shadow-[8px_0_40px_-20px_rgba(0,0,0,0.9)]">
+        <div className="mb-2">
+          <h2 className="font-serif italic text-3xl mb-1.5 pl-1 text-white tracking-tight">
             Dashboard
           </h2>
-          <p className="text-[#E53935] font-bold text-sm tracking-widest uppercase pl-2 mb-10">
+          <p className="text-[#e63946] font-bold text-[11px] tracking-[0.25em] uppercase pl-1 mb-10">
             {userRole} Portal
           </p>
         </div>
 
-        <nav className="flex flex-col gap-3">
+        <nav className="flex flex-col gap-1.5">
           {userRole === "Teacher" && (
             <button
               onClick={() => setActiveTab("dashboard")}
-              className={`flex items-center gap-4 px-5 py-3 rounded-full transition-all w-full text-left ${activeTab === "dashboard" ? "bg-[#4a4a4a] text-white font-bold" : "text-gray-300 hover:bg-white/5"}`}
+              className={`flex items-center gap-3.5 px-4 py-3 rounded-xl transition-all duration-200 w-full text-left border text-sm ${activeTab === "dashboard" ? "bg-gradient-to-r from-[#e63946]/20 to-[#e63946]/5 text-white font-semibold border-[#e63946]/35 shadow-[0_0_0_1px_rgba(230,57,70,0.15),0_8px_24px_-8px_rgba(230,57,70,0.35)]" : "text-gray-400 hover:text-white hover:bg-white/[0.04] border-transparent hover:border-white/[0.06] font-medium"}`}
             >
-              <LayoutDashboard size={20} />
+              <LayoutDashboard size={20} className={activeTab === "dashboard" ? "text-[#e63946]" : "opacity-80"} />
               <span>My Puzzles</span>
             </button>
           )}
@@ -459,27 +459,27 @@ const Dashboard = () => {
           {userRole === "Teacher" && (
             <button
               onClick={() => setActiveTab("create")}
-              className={`flex items-center gap-4 px-5 py-3 rounded-full transition-all w-full text-left ${activeTab === "create" ? "bg-[#4a4a4a] text-white font-bold" : "text-gray-300 hover:bg-white/5"}`}
+              className={`flex items-center gap-3.5 px-4 py-3 rounded-xl transition-all duration-200 w-full text-left border text-sm ${activeTab === "create" ? "bg-gradient-to-r from-[#e63946]/20 to-[#e63946]/5 text-white font-semibold border-[#e63946]/35 shadow-[0_0_0_1px_rgba(230,57,70,0.15),0_8px_24px_-8px_rgba(230,57,70,0.35)]" : "text-gray-400 hover:text-white hover:bg-white/[0.04] border-transparent hover:border-white/[0.06] font-medium"}`}
             >
-              <PlusCircle size={20} />
+              <PlusCircle size={20} className={activeTab === "create" ? "text-[#e63946]" : "opacity-80"} />
               <span>Create Puzzle</span>
             </button>
           )}
           {userRole === "Teacher" && (
             <button
               onClick={() => setActiveTab("upload")}
-              className={`flex items-center gap-4 px-5 py-3 rounded-full transition-all w-full text-left ${activeTab === "upload" ? "bg-[#4a4a4a] text-white font-bold" : "text-gray-300 hover:bg-white/5"}`}
+              className={`flex items-center gap-3.5 px-4 py-3 rounded-xl transition-all duration-200 w-full text-left border text-sm ${activeTab === "upload" ? "bg-gradient-to-r from-[#e63946]/20 to-[#e63946]/5 text-white font-semibold border-[#e63946]/35 shadow-[0_0_0_1px_rgba(230,57,70,0.15),0_8px_24px_-8px_rgba(230,57,70,0.35)]" : "text-gray-400 hover:text-white hover:bg-white/[0.04] border-transparent hover:border-white/[0.06] font-medium"}`}
             >
-              <FileText size={20} />
+              <FileText size={20} className={activeTab === "upload" ? "text-[#e63946]" : "opacity-80"} />
               <span>Add Content</span>
             </button>
           )}
           {userRole === "Teacher" && (
             <button
               onClick={() => setActiveTab("students")}
-              className={`flex items-center gap-4 px-5 py-3 rounded-full transition-all w-full text-left ${activeTab === "students" ? "bg-[#4a4a4a] text-white font-bold" : "text-gray-300 hover:bg-white/5"}`}
+              className={`flex items-center gap-3.5 px-4 py-3 rounded-xl transition-all duration-200 w-full text-left border text-sm ${activeTab === "students" ? "bg-gradient-to-r from-[#e63946]/20 to-[#e63946]/5 text-white font-semibold border-[#e63946]/35 shadow-[0_0_0_1px_rgba(230,57,70,0.15),0_8px_24px_-8px_rgba(230,57,70,0.35)]" : "text-gray-400 hover:text-white hover:bg-white/[0.04] border-transparent hover:border-white/[0.06] font-medium"}`}
             >
-              <Users size={20} />
+              <Users size={20} className={activeTab === "students" ? "text-[#e63946]" : "opacity-80"} />
               <span>Students</span>
             </button>
           )}
@@ -487,9 +487,9 @@ const Dashboard = () => {
           {userRole === "Admin" && (
             <button
               onClick={() => setActiveTab("admin-teachers")}
-              className={`flex items-center gap-4 px-5 py-3 rounded-full transition-all w-full text-left ${activeTab === "admin-teachers" ? "bg-[#4a4a4a] text-white font-bold" : "text-gray-300 hover:bg-white/5"}`}
+              className={`flex items-center gap-3.5 px-4 py-3 rounded-xl transition-all duration-200 w-full text-left border text-sm ${activeTab === "admin-teachers" ? "bg-gradient-to-r from-[#22c55e]/20 to-[#22c55e]/5 text-white font-semibold border-[#22c55e]/35 shadow-[0_0_0_1px_rgba(34,197,94,0.15),0_8px_24px_-8px_rgba(34,197,94,0.25)]" : "text-gray-400 hover:text-white hover:bg-white/[0.04] border-transparent hover:border-white/[0.06] font-medium"}`}
             >
-              <Users size={20} />
+              <Users size={20} className={activeTab === "admin-teachers" ? "text-[#4ade80]" : "opacity-80"} />
               <span>Teachers</span>
             </button>
           )}
@@ -497,9 +497,9 @@ const Dashboard = () => {
           {userRole === "Admin" && (
             <button
               onClick={() => setActiveTab("admin-students")}
-              className={`flex items-center gap-4 px-5 py-3 rounded-full transition-all w-full text-left ${activeTab === "admin-students" ? "bg-[#4a4a4a] text-white font-bold" : "text-gray-300 hover:bg-white/5"}`}
+              className={`flex items-center gap-3.5 px-4 py-3 rounded-xl transition-all duration-200 w-full text-left border text-sm ${activeTab === "admin-students" ? "bg-gradient-to-r from-[#22c55e]/20 to-[#22c55e]/5 text-white font-semibold border-[#22c55e]/35 shadow-[0_0_0_1px_rgba(34,197,94,0.15),0_8px_24px_-8px_rgba(34,197,94,0.25)]" : "text-gray-400 hover:text-white hover:bg-white/[0.04] border-transparent hover:border-white/[0.06] font-medium"}`}
             >
-              <List size={20} />
+              <List size={20} className={activeTab === "admin-students" ? "text-[#4ade80]" : "opacity-80"} />
               <span>Students</span>
             </button>
           )}
@@ -507,9 +507,9 @@ const Dashboard = () => {
           {userRole === "Student" && (
             <button
               onClick={() => setActiveTab("available")}
-              className={`flex items-center gap-4 px-5 py-3 rounded-full transition-all w-full text-left ${activeTab === "available" ? "bg-[#E53935] text-white font-bold shadow-[0_0_15px_rgba(229,57,53,0.4)]" : "text-gray-300 hover:bg-white/5"}`}
+              className={`flex items-center gap-3.5 px-4 py-3 rounded-xl transition-all duration-200 w-full text-left border text-sm ${activeTab === "available" ? "bg-gradient-to-r from-[#e63946] to-[#c62f3a] text-white font-semibold border-[#e63946]/50 shadow-[0_0_0_1px_rgba(230,57,70,0.35),0_12px_32px_-10px_rgba(230,57,70,0.55)]" : "text-gray-400 hover:text-white hover:bg-white/[0.04] border-transparent hover:border-white/[0.06] font-medium"}`}
             >
-              <Gamepad2 size={20} />
+              <Gamepad2 size={20} className={activeTab === "available" ? "text-white" : "opacity-80"} />
               <span>Available Puzzles</span>
             </button>
           )}
@@ -517,9 +517,9 @@ const Dashboard = () => {
           {userRole === "Student" && (
             <button
               onClick={() => setActiveTab("attempts")}
-              className={`flex items-center gap-4 px-5 py-3 rounded-full transition-all w-full text-left ${activeTab === "attempts" ? "bg-[#4a4a4a] text-white font-bold" : "text-gray-300 hover:bg-white/5"}`}
+              className={`flex items-center gap-3.5 px-4 py-3 rounded-xl transition-all duration-200 w-full text-left border text-sm ${activeTab === "attempts" ? "bg-gradient-to-r from-[#3b82f6]/20 to-[#3b82f6]/5 text-white font-semibold border-[#3b82f6]/35 shadow-[0_0_0_1px_rgba(59,130,246,0.15),0_8px_24px_-8px_rgba(59,130,246,0.3)]" : "text-gray-400 hover:text-white hover:bg-white/[0.04] border-transparent hover:border-white/[0.06] font-medium"}`}
             >
-              <History size={20} />
+              <History size={20} className={activeTab === "attempts" ? "text-[#60a5fa]" : "opacity-80"} />
               <span>Attempted Puzzles</span>
             </button>
           )}
@@ -527,27 +527,27 @@ const Dashboard = () => {
           {userRole === "Student" && (
             <button
               onClick={() => setActiveTab("stats")}
-              className={`flex items-center gap-4 px-5 py-3 rounded-full transition-all w-full text-left ${activeTab === "stats" ? "bg-[#4a4a4a] text-white font-bold" : "text-gray-300 hover:bg-white/5"}`}
+              className={`flex items-center gap-3.5 px-4 py-3 rounded-xl transition-all duration-200 w-full text-left border text-sm ${activeTab === "stats" ? "bg-gradient-to-r from-[#3b82f6]/20 to-[#3b82f6]/5 text-white font-semibold border-[#3b82f6]/35 shadow-[0_0_0_1px_rgba(59,130,246,0.15),0_8px_24px_-8px_rgba(59,130,246,0.3)]" : "text-gray-400 hover:text-white hover:bg-white/[0.04] border-transparent hover:border-white/[0.06] font-medium"}`}
             >
-              <List size={20} />
+              <List size={20} className={activeTab === "stats" ? "text-[#60a5fa]" : "opacity-80"} />
               <span>Current Stats</span>
             </button>
           )}
 
           <button
             onClick={() => setActiveTab("scores")}
-            className={`flex items-center gap-4 px-5 py-3 rounded-full transition-all w-full text-left ${activeTab === "scores" ? "bg-[#4a4a4a] text-white font-bold" : "text-gray-300 hover:bg-white/5"}`}
+            className={`flex items-center gap-3.5 px-4 py-3 rounded-xl transition-all duration-200 w-full text-left border text-sm ${activeTab === "scores" ? "bg-gradient-to-r from-amber-500/15 to-amber-600/5 text-white font-semibold border-amber-500/30 shadow-[0_0_0_1px_rgba(245,158,11,0.12),0_8px_24px_-8px_rgba(245,158,11,0.2)]" : "text-gray-400 hover:text-white hover:bg-white/[0.04] border-transparent hover:border-white/[0.06] font-medium"}`}
           >
-            <Bell size={20} />
+            <Bell size={20} className={activeTab === "scores" ? "text-amber-400" : "opacity-80"} />
             <span>Leaderboard</span>
           </button>
 
           {userRole === "Teacher" && (
             <button
               onClick={() => setActiveTab("teacher-analysis")}
-              className={`flex items-center gap-4 px-5 py-3 rounded-full transition-all w-full text-left ${activeTab === "teacher-analysis" ? "bg-[#4a4a4a] text-white font-bold" : "text-gray-300 hover:bg-white/5"}`}
+              className={`flex items-center gap-3.5 px-4 py-3 rounded-xl transition-all duration-200 w-full text-left border text-sm ${activeTab === "teacher-analysis" ? "bg-gradient-to-r from-[#e63946]/20 to-[#e63946]/5 text-white font-semibold border-[#e63946]/35 shadow-[0_0_0_1px_rgba(230,57,70,0.15),0_8px_24px_-8px_rgba(230,57,70,0.35)]" : "text-gray-400 hover:text-white hover:bg-white/[0.04] border-transparent hover:border-white/[0.06] font-medium"}`}
             >
-              <BarChart2 size={20} />
+              <BarChart2 size={20} className={activeTab === "teacher-analysis" ? "text-[#e63946]" : "opacity-80"} />
               <span>Analytics</span>
             </button>
           )}
@@ -555,9 +555,9 @@ const Dashboard = () => {
           {userRole === "Student" && (
             <button
               onClick={() => setActiveTab("report")}
-              className={`flex items-center gap-4 px-5 py-3 rounded-full transition-all w-full text-left ${activeTab === "report" ? "bg-[#4a4a4a] text-white font-bold" : "text-gray-300 hover:bg-white/5"}`}
+              className={`flex items-center gap-3.5 px-4 py-3 rounded-xl transition-all duration-200 w-full text-left border text-sm ${activeTab === "report" ? "bg-gradient-to-r from-[#3b82f6]/20 to-[#3b82f6]/5 text-white font-semibold border-[#3b82f6]/35 shadow-[0_0_0_1px_rgba(59,130,246,0.15),0_8px_24px_-8px_rgba(59,130,246,0.3)]" : "text-gray-400 hover:text-white hover:bg-white/[0.04] border-transparent hover:border-white/[0.06] font-medium"}`}
             >
-              <BarChart2 size={20} />
+              <BarChart2 size={20} className={activeTab === "report" ? "text-[#60a5fa]" : "opacity-80"} />
               <span>Report</span>
             </button>
           )}
@@ -565,9 +565,9 @@ const Dashboard = () => {
           {userRole === "Student" && (
             <button
               onClick={() => setActiveTab("reanalyse")}
-              className={`flex items-center gap-4 px-5 py-3 rounded-full transition-all w-full text-left ${activeTab === "reanalyse" ? "bg-[#4a4a4a] text-white font-bold" : "text-gray-300 hover:bg-white/5"}`}
+              className={`flex items-center gap-3.5 px-4 py-3 rounded-xl transition-all duration-200 w-full text-left border text-sm ${activeTab === "reanalyse" ? "bg-gradient-to-r from-[#3b82f6]/20 to-[#3b82f6]/5 text-white font-semibold border-[#3b82f6]/35 shadow-[0_0_0_1px_rgba(59,130,246,0.15),0_8px_24px_-8px_rgba(59,130,246,0.3)]" : "text-gray-400 hover:text-white hover:bg-white/[0.04] border-transparent hover:border-white/[0.06] font-medium"}`}
             >
-              <RotateCcw size={20} />
+              <RotateCcw size={20} className={activeTab === "reanalyse" ? "text-[#60a5fa]" : "opacity-80"} />
               <span>Reanalyse</span>
             </button>
           )}
@@ -576,7 +576,7 @@ const Dashboard = () => {
         {/* SIGN OUT BUTTON */}
         <button
           onClick={handleLogout}
-          className="flex items-center gap-4 px-5 py-3 mt-auto rounded-full text-red-400 hover:bg-red-500/10 hover:text-red-300 transition-all font-medium w-full text-left"
+          className="flex items-center gap-3.5 px-4 py-3 mt-auto rounded-xl text-red-400/95 hover:bg-red-500/10 hover:text-red-300 transition-all duration-200 font-medium w-full text-left border border-transparent hover:border-red-500/20 text-sm"
         >
           <LogOut size={20} />
           <span>Sign Out</span>
@@ -584,66 +584,76 @@ const Dashboard = () => {
       </aside>
 
       {/* MAIN CONTENT AREA */}
-      <main className="flex-1 flex flex-col bg-[radial-gradient(circle_at_top_left,_#1a1010_0%,_#050505_100%)] overflow-y-auto">
+      <main className="flex-1 flex flex-col min-w-0 bg-[radial-gradient(ellipse_120%_80%_at_0%_-10%,rgba(230,57,70,0.08),transparent_50%),radial-gradient(circle_at_top_right,#141018_0%,#050505_55%)] overflow-y-auto">
         {/* TOP HEADER */}
-        <header className="px-10 py-8 bg-gradient-to-r from-[#1f1816] to-[#0a0808] border-b border-white/5 flex items-center">
-          <div className="flex items-center gap-4">
-            <Search size={32} className="text-gray-400" />
-            <h1 className="font-serif text-4xl text-gray-200 m-0">
-              Welcome 🍦
-            </h1>
+        <header className="px-8 lg:px-12 py-7 bg-gradient-to-r from-[#141212] via-[#0e0c0c] to-[#0a0808] border-b border-white/[0.06] flex items-center justify-between shadow-[0_1px_0_rgba(255,255,255,0.04)_inset]">
+          <div className="flex items-center gap-5 min-w-0">
+            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-white/[0.04] border border-white/[0.08] text-[#e63946] shadow-[0_8px_30px_-12px_rgba(230,57,70,0.45)] shrink-0">
+              <Search size={22} className="opacity-90" />
+            </div>
+            <div className="min-w-0">
+              <p className="text-[11px] uppercase tracking-[0.28em] text-gray-500 font-semibold m-0 mb-1">
+                Overview
+              </p>
+              <h1 className="font-serif text-3xl sm:text-4xl text-white m-0 tracking-tight">
+                Welcome
+              </h1>
+              <p className="text-sm text-gray-500 m-0 mt-1 font-normal max-w-xl leading-relaxed">
+                Manage puzzles, content, and progress from one place.
+              </p>
+            </div>
           </div>
         </header>
 
         {/* DYNAMIC CONTENT PANEL */}
-        <div className="m-10 flex-1">
+        <div className="p-6 sm:p-8 lg:p-10 flex-1">
           {activeTab === "dashboard" && userRole === "Teacher" && (
-            <div className="bg-[#1e1514] rounded-3xl p-8 shadow-[0_10px_40px_rgba(0,0,0,0.6)] border border-white/5 h-full">
+            <div className="bg-gradient-to-br from-[#1a1414] via-[#141010] to-[#0f0c0c] rounded-3xl p-8 sm:p-9 shadow-[0_24px_60px_-30px_rgba(0,0,0,0.85)] border border-white/[0.07] h-full">
               {/* ... (Existing Dashboard Grid) ... */}
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-10">
-                <div className="bg-[#110c0b] border border-white/5 rounded-2xl py-8 px-4 flex flex-col items-center justify-center shadow-inner">
-                  <div className="font-serif text-5xl mb-3 text-white">{stats.total_puzzles}</div>
-                  <div className="flex items-center gap-2 text-sm text-gray-300 font-medium">
-                    <Puzzle size={18} color="#E53935" /> Total Puzzles
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5 mb-10">
+                <div className="group bg-[#0c0a0a]/90 border border-white/[0.06] rounded-2xl py-8 px-4 flex flex-col items-center justify-center shadow-[inset_0_1px_0_rgba(255,255,255,0.04),0_12px_40px_-24px_rgba(0,0,0,0.8)] hover:border-[#e63946]/25 transition-colors duration-300">
+                  <div className="font-serif text-5xl mb-3 text-white tabular-nums tracking-tight">{stats.total_puzzles}</div>
+                  <div className="flex items-center gap-2 text-xs uppercase tracking-wider text-gray-400 font-semibold">
+                    <Puzzle size={18} color="#e63946" className="opacity-90" /> Total Puzzles
                   </div>
                 </div>
-                <div className="bg-[#110c0b] border border-white/5 rounded-2xl py-8 px-4 flex flex-col items-center justify-center shadow-inner">
-                  <div className="font-serif text-5xl mb-3 text-white">{stats.assistances}</div>
-                  <div className="flex items-center gap-2 text-sm text-gray-300 font-medium">
-                    <Lightbulb size={18} color="#E53935" /> Assistances
+                <div className="group bg-[#0c0a0a]/90 border border-white/[0.06] rounded-2xl py-8 px-4 flex flex-col items-center justify-center shadow-[inset_0_1px_0_rgba(255,255,255,0.04),0_12px_40px_-24px_rgba(0,0,0,0.8)] hover:border-[#e63946]/25 transition-colors duration-300">
+                  <div className="font-serif text-5xl mb-3 text-white tabular-nums tracking-tight">{stats.assistances}</div>
+                  <div className="flex items-center gap-2 text-xs uppercase tracking-wider text-gray-400 font-semibold">
+                    <Lightbulb size={18} color="#e63946" className="opacity-90" /> Assistances
                   </div>
                 </div>
-                <div className="bg-[#110c0b] border border-white/5 rounded-2xl py-8 px-4 flex flex-col items-center justify-center shadow-inner">
-                  <div className="font-serif text-5xl mb-3 text-white">{stats.attainment}</div>
-                  <div className="flex items-center gap-2 text-sm text-gray-300 font-medium">
-                    <Target size={18} color="#E53935" /> Attainment
+                <div className="group bg-[#0c0a0a]/90 border border-white/[0.06] rounded-2xl py-8 px-4 flex flex-col items-center justify-center shadow-[inset_0_1px_0_rgba(255,255,255,0.04),0_12px_40px_-24px_rgba(0,0,0,0.8)] hover:border-[#e63946]/25 transition-colors duration-300">
+                  <div className="font-serif text-5xl mb-3 text-white tabular-nums tracking-tight">{stats.attainment}</div>
+                  <div className="flex items-center gap-2 text-xs uppercase tracking-wider text-gray-400 font-semibold">
+                    <Target size={18} color="#e63946" className="opacity-90" /> Attainment
                   </div>
                 </div>
-                <div className="bg-[#110c0b] border border-white/5 rounded-2xl py-8 px-4 flex flex-col items-center justify-center shadow-inner">
-                  <div className="font-serif text-5xl mb-3 text-white">{stats.avg_score}</div>
-                  <div className="flex items-center gap-2 text-sm text-gray-300 font-medium">
-                    <Star size={18} color="#E53935" /> Avg Score
+                <div className="group bg-[#0c0a0a]/90 border border-white/[0.06] rounded-2xl py-8 px-4 flex flex-col items-center justify-center shadow-[inset_0_1px_0_rgba(255,255,255,0.04),0_12px_40px_-24px_rgba(0,0,0,0.8)] hover:border-[#e63946]/25 transition-colors duration-300">
+                  <div className="font-serif text-5xl mb-3 text-white tabular-nums tracking-tight">{stats.avg_score}</div>
+                  <div className="flex items-center gap-2 text-xs uppercase tracking-wider text-gray-400 font-semibold">
+                    <Star size={18} color="#e63946" className="opacity-90" /> Avg Score
                   </div>
                 </div>
               </div>
 
-              <div className="bg-[#110c0b] border border-white/5 rounded-2xl p-6 overflow-hidden">
-                <table className="w-full border-collapse text-left">
+              <div className="bg-[#0c0a0a]/95 border border-white/[0.06] rounded-2xl p-2 sm:p-0 overflow-hidden shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]">
+                <table className="w-full border-collapse text-left text-sm">
                   <thead>
-                    <tr>
-                      <th className="py-4 px-4 font-serif text-lg font-normal text-white border-b border-white/10">
+                    <tr className="bg-white/[0.02]">
+                      <th className="py-4 px-4 font-semibold text-xs uppercase tracking-wider text-gray-400 border-b border-white/[0.08]">
                         Title
                       </th>
-                      <th className="py-4 px-4 font-serif text-lg font-normal text-white border-b border-white/10 text-center">
+                      <th className="py-4 px-4 font-semibold text-xs uppercase tracking-wider text-gray-400 border-b border-white/[0.08] text-center">
                         Clues
                       </th>
-                      <th className="py-4 px-4 font-serif text-lg font-normal text-white border-b border-white/10 text-center">
+                      <th className="py-4 px-4 font-semibold text-xs uppercase tracking-wider text-gray-400 border-b border-white/[0.08] text-center">
                         Created
                       </th>
-                      <th className="py-4 px-4 font-serif text-lg font-normal text-white border-b border-white/10 text-center">
+                      <th className="py-4 px-4 font-semibold text-xs uppercase tracking-wider text-gray-400 border-b border-white/[0.08] text-center">
                         Status
                       </th>
-                      <th className="py-4 px-4 font-serif text-lg font-normal text-white border-b border-white/10 text-center">
+                      <th className="py-4 px-4 font-semibold text-xs uppercase tracking-wider text-gray-400 border-b border-white/[0.08] text-center">
                         Actions
                       </th>
                     </tr>
@@ -662,7 +672,7 @@ const Dashboard = () => {
                         </td>
                       </tr>
                     ) : (
-                      puzzles.map((row) => (
+                      puzzles.map((row, idx) => (
                         <tr
                           key={row.id}
                           onClick={() => {
@@ -673,22 +683,24 @@ const Dashboard = () => {
                               setActiveTab("play");
                             }
                           }}
-                          className={`hover:bg-white/5 transition-colors cursor-pointer ${selectedPuzzleId === row.id ? "bg-white/5" : ""}`}
+                          className={`transition-colors cursor-pointer border-b border-white/[0.04] ${idx % 2 === 1 ? "bg-white/[0.02]" : "bg-transparent"} hover:bg-white/[0.06] ${selectedPuzzleId === row.id ? "bg-[#e63946]/[0.08] hover:bg-[#e63946]/[0.1]" : ""}`}
                         >
-                          <td className="py-4 px-4 text-gray-400 border-b border-white/5">
+                          <td className="py-3.5 px-4 text-gray-200 font-medium">
                             {row.title}
                           </td>
-                          <td className="py-4 px-4 text-gray-400 border-b border-white/5 text-center">
+                          <td className="py-3.5 px-4 text-gray-400 text-center tabular-nums">
                             {row.clue_count ?? row.clues?.length ?? 0}
                           </td>
-                          <td className="py-4 px-4 text-gray-400 border-b border-white/5 text-center">
+                          <td className="py-3.5 px-4 text-gray-400 text-center">
                             {formatDate(row.created_at)}
                           </td>
-                          <td className="py-4 px-4 text-gray-400 border-b border-white/5 text-center">
-                            {row.status}
+                          <td className="py-3.5 px-4 text-center">
+                            <span className="inline-flex items-center justify-center rounded-full px-2.5 py-0.5 text-[11px] font-semibold uppercase tracking-wide border border-white/10 bg-white/[0.04] text-gray-300">
+                              {row.status}
+                            </span>
                           </td>
-                          <td className="py-4 px-4 text-gray-400 border-b border-white/5 text-center">
-                            <div className="flex flex-wrap gap-2 justify-center">
+                          <td className="py-3.5 px-4 text-center">
+                            <div className="flex flex-wrap gap-1.5 justify-center">
                               <button
                                 type="button"
                                 onClick={(event) => {
@@ -696,7 +708,7 @@ const Dashboard = () => {
                                   handleTeacherEdit(row.id);
                                 }}
                                 disabled={row.status !== "draft"}
-                                className="text-xs bg-blue-700 px-2 py-1 rounded disabled:opacity-50"
+                                className="text-[11px] font-semibold px-2.5 py-1.5 rounded-lg bg-blue-600/90 text-white hover:bg-blue-500 border border-blue-400/20 shadow-sm disabled:opacity-40 disabled:hover:bg-blue-600/90"
                               >
                                 Edit
                               </button>
@@ -706,7 +718,7 @@ const Dashboard = () => {
                                   event.stopPropagation();
                                   handleTeacherPreview(row.id);
                                 }}
-                                className="text-xs bg-gray-700 px-2 py-1 rounded"
+                                className="text-[11px] font-semibold px-2.5 py-1.5 rounded-lg bg-white/[0.06] text-gray-200 hover:bg-white/[0.1] border border-white/10"
                               >
                                 Preview
                               </button>
@@ -717,7 +729,7 @@ const Dashboard = () => {
                                   handleTeacherPublish(row.id);
                                 }}
                                 disabled={row.status !== "draft"}
-                                className="text-xs bg-green-700 px-2 py-1 rounded disabled:opacity-50"
+                                className="text-[11px] font-semibold px-2.5 py-1.5 rounded-lg bg-emerald-600/90 text-white hover:bg-emerald-500 border border-emerald-400/20 shadow-sm disabled:opacity-40 disabled:hover:bg-emerald-600/90"
                               >
                                 Publish
                               </button>
@@ -728,7 +740,7 @@ const Dashboard = () => {
                                   handleTeacherArchive(row.id);
                                 }}
                                 disabled={row.status === "archived"}
-                                className="text-xs bg-amber-700 px-2 py-1 rounded disabled:opacity-50"
+                                className="text-[11px] font-semibold px-2.5 py-1.5 rounded-lg bg-amber-600/90 text-white hover:bg-amber-500 border border-amber-400/25 shadow-sm disabled:opacity-40 disabled:hover:bg-amber-600/90"
                               >
                                 Archive
                               </button>
@@ -738,7 +750,7 @@ const Dashboard = () => {
                                   event.stopPropagation();
                                   handleTeacherAnalytics(row.id);
                                 }}
-                                className="text-xs bg-purple-700 px-2 py-1 rounded"
+                                className="text-[11px] font-semibold px-2.5 py-1.5 rounded-lg bg-violet-600/90 text-white hover:bg-violet-500 border border-violet-400/20 shadow-sm"
                               >
                                 Analytics
                               </button>
@@ -749,7 +761,7 @@ const Dashboard = () => {
                                   handleTeacherDelete(row.id);
                                 }}
                                 disabled={row.status === "published"}
-                                className="text-xs bg-red-700 px-2 py-1 rounded disabled:opacity-50"
+                                className="text-[11px] font-semibold px-2.5 py-1.5 rounded-lg bg-red-600/90 text-white hover:bg-red-500 border border-red-400/25 shadow-sm disabled:opacity-40 disabled:hover:bg-red-600/90"
                               >
                                 Delete
                               </button>
@@ -765,24 +777,24 @@ const Dashboard = () => {
           )}
 
           {activeTab === "available" && userRole === "Student" && (
-            <div className="bg-[#1e1514] rounded-3xl p-8 shadow-[0_10px_40px_rgba(0,0,0,0.6)] border border-white/5 h-full">
-              <div className="bg-[#110c0b] border border-white/5 rounded-2xl p-6 overflow-hidden">
-                <table className="w-full border-collapse text-left">
+            <div className="bg-gradient-to-br from-[#1a1414] via-[#141010] to-[#0f0c0c] rounded-3xl p-8 shadow-[0_24px_60px_-30px_rgba(0,0,0,0.85)] border border-white/[0.07] h-full">
+              <div className="bg-[#0c0a0a]/95 border border-white/[0.06] rounded-2xl overflow-hidden shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]">
+                <table className="w-full border-collapse text-left text-sm">
                   <thead>
-                    <tr>
-                      <th className="py-4 px-4 font-serif text-lg font-normal text-white border-b border-white/10">
+                    <tr className="bg-white/[0.02]">
+                      <th className="py-4 px-4 font-semibold text-xs uppercase tracking-wider text-gray-400 border-b border-white/[0.08]">
                         Title
                       </th>
-                      <th className="py-4 px-4 font-serif text-lg font-normal text-white border-b border-white/10 text-center">
+                      <th className="py-4 px-4 font-semibold text-xs uppercase tracking-wider text-gray-400 border-b border-white/[0.08] text-center">
                         Teacher
                       </th>
-                      <th className="py-4 px-4 font-serif text-lg font-normal text-white border-b border-white/10 text-center">
+                      <th className="py-4 px-4 font-semibold text-xs uppercase tracking-wider text-gray-400 border-b border-white/[0.08] text-center">
                         Difficulty
                       </th>
-                      <th className="py-4 px-4 font-serif text-lg font-normal text-white border-b border-white/10 text-center">
+                      <th className="py-4 px-4 font-semibold text-xs uppercase tracking-wider text-gray-400 border-b border-white/[0.08] text-center">
                         Clues
                       </th>
-                      <th className="py-4 px-4 font-serif text-lg font-normal text-white border-b border-white/10 text-center">
+                      <th className="py-4 px-4 font-semibold text-xs uppercase tracking-wider text-gray-400 border-b border-white/[0.08] text-center">
                         Created
                       </th>
                     </tr>
@@ -790,39 +802,39 @@ const Dashboard = () => {
                   <tbody>
                     {isLoadingDashboard ? (
                       <tr>
-                        <td colSpan="5" className="py-4 px-4 text-gray-400 text-center">
+                        <td colSpan="5" className="py-10 px-4 text-gray-400 text-center">
                           Loading puzzles...
                         </td>
                       </tr>
                     ) : puzzles.length === 0 ? (
                       <tr>
-                        <td colSpan="5" className="py-4 px-4 text-gray-400 text-center">
+                        <td colSpan="5" className="py-10 px-4 text-gray-400 text-center">
                           {dashboardError || "No puzzles available"}
                         </td>
                       </tr>
                     ) : (
-                      puzzles.map((row) => (
+                      puzzles.map((row, idx) => (
                         <tr
                           key={row.id}
                           onClick={() => {
                             setSelectedPuzzleId(row.id);
                             setActiveTab("play");
                           }}
-                          className={`hover:bg-white/5 transition-colors cursor-pointer ${selectedPuzzleId === row.id ? "bg-white/5" : ""}`}
+                          className={`transition-colors cursor-pointer border-b border-white/[0.04] ${idx % 2 === 1 ? "bg-white/[0.02]" : ""} hover:bg-white/[0.06] ${selectedPuzzleId === row.id ? "bg-[#3b82f6]/[0.08]" : ""}`}
                         >
-                          <td className="py-4 px-4 text-gray-400 border-b border-white/5">
+                          <td className="py-3.5 px-4 text-gray-200 font-medium">
                             {row.title}
                           </td>
-                          <td className="py-4 px-4 text-gray-400 border-b border-white/5 text-center">
+                          <td className="py-3.5 px-4 text-gray-400 text-center">
                             {row.teacher_name || row.teacher_id || "-"}
                           </td>
-                          <td className="py-4 px-4 text-gray-400 border-b border-white/5 text-center">
+                          <td className="py-3.5 px-4 text-gray-400 text-center">
                             {row.difficulty || "-"}
                           </td>
-                          <td className="py-4 px-4 text-gray-400 border-b border-white/5 text-center">
+                          <td className="py-3.5 px-4 text-gray-400 text-center tabular-nums">
                             {row.clue_count ?? row.clues?.length ?? 0}
                           </td>
-                          <td className="py-4 px-4 text-gray-400 border-b border-white/5 text-center">
+                          <td className="py-3.5 px-4 text-gray-400 text-center">
                             {formatDate(row.created_at)}
                           </td>
                         </tr>
@@ -835,24 +847,24 @@ const Dashboard = () => {
           )}
 
           {activeTab === "attempts" && userRole === "Student" && (
-            <div className="bg-[#1e1514] rounded-3xl p-8 shadow-[0_10px_40px_rgba(0,0,0,0.6)] border border-white/5 h-full">
-              <div className="bg-[#110c0b] border border-white/5 rounded-2xl p-6 overflow-hidden">
-                <table className="w-full border-collapse text-left">
+            <div className="bg-gradient-to-br from-[#1a1414] via-[#141010] to-[#0f0c0c] rounded-3xl p-8 shadow-[0_24px_60px_-30px_rgba(0,0,0,0.85)] border border-white/[0.07] h-full">
+              <div className="bg-[#0c0a0a]/95 border border-white/[0.06] rounded-2xl overflow-hidden shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]">
+                <table className="w-full border-collapse text-left text-sm">
                   <thead>
-                    <tr>
-                      <th className="py-4 px-4 font-serif text-lg font-normal text-white border-b border-white/10">
+                    <tr className="bg-white/[0.02]">
+                      <th className="py-4 px-4 font-semibold text-xs uppercase tracking-wider text-gray-400 border-b border-white/[0.08]">
                         Puzzle
                       </th>
-                      <th className="py-4 px-4 font-serif text-lg font-normal text-white border-b border-white/10 text-center">
+                      <th className="py-4 px-4 font-semibold text-xs uppercase tracking-wider text-gray-400 border-b border-white/[0.08] text-center">
                         Score
                       </th>
-                      <th className="py-4 px-4 font-serif text-lg font-normal text-white border-b border-white/10 text-center">
+                      <th className="py-4 px-4 font-semibold text-xs uppercase tracking-wider text-gray-400 border-b border-white/[0.08] text-center">
                         Time
                       </th>
-                      <th className="py-4 px-4 font-serif text-lg font-normal text-white border-b border-white/10 text-center">
+                      <th className="py-4 px-4 font-semibold text-xs uppercase tracking-wider text-gray-400 border-b border-white/[0.08] text-center">
                         Rank
                       </th>
-                      <th className="py-4 px-4 font-serif text-lg font-normal text-white border-b border-white/10 text-center">
+                      <th className="py-4 px-4 font-semibold text-xs uppercase tracking-wider text-gray-400 border-b border-white/[0.08] text-center">
                         Date
                       </th>
                     </tr>
@@ -860,38 +872,41 @@ const Dashboard = () => {
                   <tbody>
                     {isLoadingHistory ? (
                       <tr>
-                        <td colSpan="5" className="py-4 px-4 text-gray-400 text-center">
+                        <td colSpan="5" className="py-10 px-4 text-gray-400 text-center">
                           Loading attempts...
                         </td>
                       </tr>
                     ) : historyError ? (
                       <tr>
-                        <td colSpan="5" className="py-4 px-4 text-gray-400 text-center">
+                        <td colSpan="5" className="py-10 px-4 text-gray-400 text-center">
                           {historyError}
                         </td>
                       </tr>
                     ) : studentHistory.length === 0 ? (
                       <tr>
-                        <td colSpan="5" className="py-4 px-4 text-gray-400 text-center">
+                        <td colSpan="5" className="py-10 px-4 text-gray-400 text-center">
                           No attempts yet.
                         </td>
                       </tr>
                     ) : (
-                      studentHistory.map((row) => (
-                        <tr key={row.attempt_id} className="hover:bg-white/5 transition-colors">
-                          <td className="py-4 px-4 text-gray-400 border-b border-white/5">
+                      studentHistory.map((row, idx) => (
+                        <tr
+                          key={row.attempt_id}
+                          className={`transition-colors border-b border-white/[0.04] ${idx % 2 === 1 ? "bg-white/[0.02]" : ""} hover:bg-white/[0.06]`}
+                        >
+                          <td className="py-3.5 px-4 text-gray-200 font-medium">
                             {row.puzzle_title}
                           </td>
-                          <td className="py-4 px-4 text-gray-400 border-b border-white/5 text-center">
+                          <td className="py-3.5 px-4 text-gray-300 text-center tabular-nums font-medium">
                             {Math.round(row.score || 0)}%
                           </td>
-                          <td className="py-4 px-4 text-gray-400 border-b border-white/5 text-center">
+                          <td className="py-3.5 px-4 text-gray-400 text-center tabular-nums">
                             {row.completion_time || 0}s
                           </td>
-                          <td className="py-4 px-4 text-gray-400 border-b border-white/5 text-center">
+                          <td className="py-3.5 px-4 text-gray-400 text-center tabular-nums">
                             {row.rank ?? "-"}
                           </td>
-                          <td className="py-4 px-4 text-gray-400 border-b border-white/5 text-center">
+                          <td className="py-3.5 px-4 text-gray-400 text-center">
                             {formatDate(row.attempt_date || row.submitted_at)}
                           </td>
                         </tr>
@@ -997,66 +1012,83 @@ const Dashboard = () => {
           )}
 
           {activeTab === "admin-teachers" && userRole === "Admin" && (
-            <div className="bg-[#1e1514] rounded-3xl p-8 shadow-[0_10px_40px_rgba(0,0,0,0.6)] border border-white/5 h-full">
-              <div className="mb-6 flex flex-col md:flex-row gap-4 items-start md:items-center">
+            <div className="bg-gradient-to-br from-[#101a12] via-[#0e1410] to-[#0a0f0c] rounded-3xl p-8 shadow-[0_24px_60px_-30px_rgba(0,0,0,0.85)] border border-white/[0.07] h-full">
+              <div className="mb-6 flex flex-col md:flex-row gap-3 items-stretch md:items-center flex-wrap">
                 <input
                   type="text"
                   placeholder="Teacher ID"
                   value={newTeacher.teacher_id}
                   onChange={(e) => setNewTeacher((prev) => ({ ...prev, teacher_id: e.target.value }))}
-                  className="bg-[#110c0b] border border-white/10 rounded-md px-3 py-2 text-sm text-gray-200"
+                  className="bg-[#0c0f0d] border border-white/[0.08] rounded-xl px-4 py-2.5 text-sm text-gray-100 placeholder:text-gray-600 focus:outline-none focus:ring-2 focus:ring-[#22c55e]/35 focus:border-[#22c55e]/40 min-w-[160px] shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]"
                 />
                 <input
                   type="text"
                   placeholder="Name"
                   value={newTeacher.name}
                   onChange={(e) => setNewTeacher((prev) => ({ ...prev, name: e.target.value }))}
-                  className="bg-[#110c0b] border border-white/10 rounded-md px-3 py-2 text-sm text-gray-200"
+                  className="bg-[#0c0f0d] border border-white/[0.08] rounded-xl px-4 py-2.5 text-sm text-gray-100 placeholder:text-gray-600 focus:outline-none focus:ring-2 focus:ring-[#22c55e]/35 focus:border-[#22c55e]/40 min-w-[160px] shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]"
                 />
                 <input
                   type="password"
                   placeholder="Password"
                   value={newTeacher.password}
                   onChange={(e) => setNewTeacher((prev) => ({ ...prev, password: e.target.value }))}
-                  className="bg-[#110c0b] border border-white/10 rounded-md px-3 py-2 text-sm text-gray-200"
+                  className="bg-[#0c0f0d] border border-white/[0.08] rounded-xl px-4 py-2.5 text-sm text-gray-100 placeholder:text-gray-600 focus:outline-none focus:ring-2 focus:ring-[#22c55e]/35 focus:border-[#22c55e]/40 min-w-[160px] shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]"
                 />
                 <button
                   type="button"
                   onClick={handleAdminCreateTeacher}
-                  className="bg-green-700 px-3 py-2 rounded text-sm"
+                  className="bg-emerald-600 hover:bg-emerald-500 text-white px-5 py-2.5 rounded-xl text-sm font-semibold border border-emerald-400/25 shadow-[0_8px_24px_-12px_rgba(16,185,129,0.5)]"
                 >
                   Create Teacher
                 </button>
               </div>
-              {adminError && <div className="text-sm text-red-400 mb-3">{adminError}</div>}
-              <div className="bg-[#110c0b] border border-white/5 rounded-2xl p-6 overflow-hidden">
-                <table className="w-full border-collapse text-left">
+              {adminError && (
+                <div className="text-sm text-red-300 bg-red-500/10 border border-red-500/20 rounded-xl px-4 py-3 mb-4">
+                  {adminError}
+                </div>
+              )}
+              <div className="bg-[#0c0f0d]/95 border border-white/[0.06] rounded-2xl overflow-hidden shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]">
+                <table className="w-full border-collapse text-left text-sm">
                   <thead>
-                    <tr>
-                      <th className="py-3 px-3 text-gray-300">Teacher ID</th>
-                      <th className="py-3 px-3 text-gray-300">Name</th>
-                      <th className="py-3 px-3 text-gray-300 text-center">Actions</th>
+                    <tr className="bg-white/[0.02]">
+                      <th className="py-3.5 px-4 text-xs font-semibold uppercase tracking-wider text-gray-400 border-b border-white/[0.08]">
+                        Teacher ID
+                      </th>
+                      <th className="py-3.5 px-4 text-xs font-semibold uppercase tracking-wider text-gray-400 border-b border-white/[0.08]">
+                        Name
+                      </th>
+                      <th className="py-3.5 px-4 text-xs font-semibold uppercase tracking-wider text-gray-400 border-b border-white/[0.08] text-center">
+                        Actions
+                      </th>
                     </tr>
                   </thead>
                   <tbody>
                     {isLoadingAdmin ? (
                       <tr>
-                        <td colSpan="3" className="py-4 text-gray-400 text-center">Loading teachers...</td>
+                        <td colSpan="3" className="py-10 text-gray-400 text-center">
+                          Loading teachers...
+                        </td>
                       </tr>
                     ) : adminTeachers.length === 0 ? (
                       <tr>
-                        <td colSpan="3" className="py-4 text-gray-400 text-center">No teachers found.</td>
+                        <td colSpan="3" className="py-10 text-gray-400 text-center">
+                          No teachers found.
+                        </td>
                       </tr>
                     ) : (
-                      adminTeachers.map((teacher) => (
-                        <tr key={teacher.teacher_id} className="border-b border-white/5 last:border-0">
-                          <td className="py-3 px-3 text-gray-400">{teacher.teacher_id}</td>
-                          <td className="py-3 px-3 text-gray-400">{teacher.name}</td>
-                          <td className="py-3 px-3 text-center">
+                      adminTeachers.map((teacher, idx) => (
+                        <tr
+                          key={teacher.teacher_id}
+                          className={`border-b border-white/[0.04] last:border-0 ${idx % 2 === 1 ? "bg-white/[0.02]" : ""} hover:bg-white/[0.05] transition-colors`}
+                        >
+                          <td className="py-3.5 px-4 text-gray-200 font-medium">{teacher.teacher_id}</td>
+                          <td className="py-3.5 px-4 text-gray-400">{teacher.name}</td>
+                          <td className="py-3.5 px-4 text-center">
                             <button
                               type="button"
                               onClick={() => handleAdminDeleteTeacher(teacher)}
-                              className="text-xs bg-red-700 px-2 py-1 rounded"
+                              className="text-[11px] font-semibold px-2.5 py-1.5 rounded-lg bg-red-600/90 text-white hover:bg-red-500 border border-red-400/25 shadow-sm"
                             >
                               Delete
                             </button>
@@ -1071,34 +1103,49 @@ const Dashboard = () => {
           )}
 
           {activeTab === "admin-students" && userRole === "Admin" && (
-            <div className="bg-[#1e1514] rounded-3xl p-8 shadow-[0_10px_40px_rgba(0,0,0,0.6)] border border-white/5 h-full">
-              <div className="bg-[#110c0b] border border-white/5 rounded-2xl p-6 overflow-hidden">
-                <table className="w-full border-collapse text-left">
+            <div className="bg-gradient-to-br from-[#101a12] via-[#0e1410] to-[#0a0f0c] rounded-3xl p-8 shadow-[0_24px_60px_-30px_rgba(0,0,0,0.85)] border border-white/[0.07] h-full">
+              <div className="bg-[#0c0f0d]/95 border border-white/[0.06] rounded-2xl overflow-hidden shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]">
+                <table className="w-full border-collapse text-left text-sm">
                   <thead>
-                    <tr>
-                      <th className="py-3 px-3 text-gray-300">Name</th>
-                      <th className="py-3 px-3 text-gray-300">Registration</th>
-                      <th className="py-3 px-3 text-gray-300">Teacher</th>
-                      <th className="py-3 px-3 text-gray-300 text-center">Created</th>
+                    <tr className="bg-white/[0.02]">
+                      <th className="py-3.5 px-4 text-xs font-semibold uppercase tracking-wider text-gray-400 border-b border-white/[0.08]">
+                        Name
+                      </th>
+                      <th className="py-3.5 px-4 text-xs font-semibold uppercase tracking-wider text-gray-400 border-b border-white/[0.08]">
+                        Registration
+                      </th>
+                      <th className="py-3.5 px-4 text-xs font-semibold uppercase tracking-wider text-gray-400 border-b border-white/[0.08]">
+                        Teacher
+                      </th>
+                      <th className="py-3.5 px-4 text-xs font-semibold uppercase tracking-wider text-gray-400 border-b border-white/[0.08] text-center">
+                        Created
+                      </th>
                     </tr>
                   </thead>
                   <tbody>
                     {isLoadingAdmin ? (
                       <tr>
-                        <td colSpan="4" className="py-4 text-gray-400 text-center">Loading students...</td>
+                        <td colSpan="4" className="py-10 text-gray-400 text-center">
+                          Loading students...
+                        </td>
                       </tr>
                     ) : adminStudents.length === 0 ? (
                       <tr>
-                        <td colSpan="4" className="py-4 text-gray-400 text-center">No students found.</td>
+                        <td colSpan="4" className="py-10 text-gray-400 text-center">
+                          No students found.
+                        </td>
                       </tr>
                     ) : (
-                      adminStudents.map((student) => (
-                        <tr key={student.id} className="border-b border-white/5 last:border-0">
-                          <td className="py-3 px-3 text-gray-400">{student.name}</td>
-                          <td className="py-3 px-3 text-gray-400">{student.reg_no}</td>
-                          <td className="py-3 px-3 text-gray-400">{student.teacher_name || student.teacher_id || '-'}</td>
-                          <td className="py-3 px-3 text-center text-gray-400">
-                            {student.created_at ? new Date(student.created_at).toLocaleDateString() : '-'}
+                      adminStudents.map((student, idx) => (
+                        <tr
+                          key={student.id}
+                          className={`border-b border-white/[0.04] last:border-0 ${idx % 2 === 1 ? "bg-white/[0.02]" : ""} hover:bg-white/[0.05] transition-colors`}
+                        >
+                          <td className="py-3.5 px-4 text-gray-200 font-medium">{student.name}</td>
+                          <td className="py-3.5 px-4 text-gray-400">{student.reg_no}</td>
+                          <td className="py-3.5 px-4 text-gray-400">{student.teacher_name || student.teacher_id || "-"}</td>
+                          <td className="py-3.5 px-4 text-center text-gray-400">
+                            {student.created_at ? new Date(student.created_at).toLocaleDateString() : "-"}
                           </td>
                         </tr>
                       ))
