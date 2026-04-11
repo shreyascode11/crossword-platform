@@ -151,7 +151,7 @@ const Dashboard = () => {
           <div className="flex items-center gap-4">
             <Search size={32} className="text-gray-400" />
             <h1 className="font-serif text-4xl text-gray-200 m-0">
-              Welcome 👋
+              Welcome 
             </h1>
           </div>
         </header>
