@@ -1,0 +1,18 @@
+# Dependencies
+node_modules/
+
+# Build outputs
+dist/
+build/
+
+# Environment variables (secrets)
+.env
+*.local
+
+# Debug logs
+npm-debug.log*
+yarn-error.log*
+
+# Editor folders
+.vscode/
+.idea/
