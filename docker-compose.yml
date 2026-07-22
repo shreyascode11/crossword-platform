@@ -47,7 +47,7 @@ services:
 
   frontend:
     build:
-      context: ./frontend-test
+      context: ./frontend
       args:
         # Baked into the JS bundle at BUILD time — must be the URL the
         # student's browser can reach, not an internal container name.

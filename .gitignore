@@ -8,7 +8,7 @@ backend/db.sqlite3
 
 # Node
 node_modules/
-frontend-test/node_modules/
+frontend/node_modules/
 
 # Environment
 .env
@@ -16,4 +16,7 @@ frontend-test/node_modules/
 .env*.local
 
 # Next.js build
-frontend-test/.next/
+frontend/.next/
+
+# Stale Vite cache (pre-Next.js)
+frontend/.vite/

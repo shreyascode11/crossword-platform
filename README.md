@@ -168,7 +168,7 @@ python manage.py runserver                        # http://127.0.0.1:8000
 **3 · Frontend** — in a second terminal
 
 ```bash
-cd frontend-test
+cd frontend
 npm install
 npm run dev                                       # http://localhost:3000
 ```
@@ -243,7 +243,7 @@ crossword-platform/
 │   │   ├── crossword_layout.py  # grid generation and word placement
 │   │   └── urls.py
 │   └── backend/settings.py
-├── frontend-test/
+├── frontend/
 │   ├── Dockerfile               # multi-stage build → Next.js standalone
 │   ├── next.config.mjs
 │   └── src/
