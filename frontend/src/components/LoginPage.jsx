@@ -36,11 +36,20 @@ const ROLE_CONFIG = {
   Admin:   { color: P.rust,  label: 'ADMIN CONSOLE',   placeholder: 'Username'            },
 };
 
+/* There is no self-service reset: teachers reset their students' passwords and
+   admins manage teacher accounts, so point each role at the right person. */
+const RECOVERY_HELP = {
+  Teacher: 'Ask your platform administrator to reset your password. They manage all teacher accounts from the Admin console.',
+  Student: 'Ask your teacher to reset it. They can do this from Students → Reset Password, then give you the new password.',
+  Admin:   'Reset it on the server with: python manage.py changepassword <username> (or docker compose exec backend python manage.py changepassword <username>).',
+};
+
 const LoginPage = () => {
   const [activeRole, setActiveRole]     = useState('Teacher');
   const [showPassword, setShowPassword] = useState(false);
   const [isLoggingIn, setIsLoggingIn]   = useState(false);
   const [loginError, setLoginError]     = useState('');
+  const [showHelp, setShowHelp]         = useState(false);
   const [credentials, setCredentials]   = useState({
     Teacher: { userId: '', password: '' },
     Student: { userId: '', password: '' },
@@ -190,10 +199,28 @@ const LoginPage = () => {
               </div>
             )}
 
-            <div className="mt-6 flex justify-between text-xs font-mono border-t pt-5"
-              style={{ color: P.muted, borderColor: 'rgba(124,92,255,0.1)' }}>
-              <button type="button" className="hover:text-[#7c5cff] transition-colors">Forgot Password?</button>
-              <button type="button" className="hover:text-[#7c5cff] transition-colors">Contact Admin</button>
+            <div className="mt-6 border-t pt-5" style={{ borderColor: 'rgba(124,92,255,0.1)' }}>
+              <button
+                type="button"
+                onClick={() => setShowHelp(v => !v)}
+                aria-expanded={showHelp}
+                className="text-xs font-mono transition-colors hover:text-[#7c5cff]"
+                style={{ color: showHelp ? cfg.color : P.muted }}>
+                Forgot Password? {showHelp ? '▲' : '▼'}
+              </button>
+
+              {showHelp && (
+                <div className="mt-4 px-4 py-3 rounded-xl border text-xs leading-relaxed animate-fade-up"
+                  style={{ background: 'rgba(0,0,0,0.3)', borderColor: `${cfg.color}30`, color: P.stone }}>
+                  <p className="font-mono uppercase tracking-[0.2em] mb-2" style={{ color: cfg.color }}>
+                    {activeRole} account recovery
+                  </p>
+                  <p>{RECOVERY_HELP[activeRole]}</p>
+                  <p className="mt-2" style={{ color: P.muted }}>
+                    Passwords are stored encrypted and cannot be looked up — they can only be reset.
+                  </p>
+                </div>
+              )}
             </div>
           </div>
 
