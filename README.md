@@ -222,8 +222,7 @@ Because the platform stores student records and runs graded assessments, the API
 - **Login rate limiting** with temporary lockout after repeated failures, backed by a shared cache so it holds across all worker processes.
 - **Production hardening** — SSL redirect, HSTS, secure cookies, `nosniff` and `X-Frame-Options: DENY`, all behind the `DJANGO_SECURE` flag.
 
-> [!IMPORTANT]
-> **Before deploying:** set a strong `DJANGO_SECRET_KEY` (the app refuses to start in production without one), point `NEXT_PUBLIC_API_URL` at your public URL and rebuild the frontend, then enable `DJANGO_SECURE=True` once TLS is in place.
+Self-hosting on a public server? See the [deployment guide](docs/DEPLOYMENT.md).
 
 ---
 
@@ -261,6 +260,7 @@ crossword-platform/
 ## Documentation
 
 - **[User Guide (PDF)](docs/CrossWord-User-Guide.pdf)** — how to use the platform, written for teachers, students and admins
+- **[Deployment Guide](docs/DEPLOYMENT.md)** — running the stack on a server, HTTPS, backups and troubleshooting
 - **[Sample roster](docs/sample-students.csv)** — CSV template for bulk student import, in the format `name,reg_no,password`
 
 ---
