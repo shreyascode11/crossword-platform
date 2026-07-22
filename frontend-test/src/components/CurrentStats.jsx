@@ -1,158 +1,145 @@
-import React from 'react';
-import { ChevronDown, MapPin, Target, Star } from 'lucide-react';
+'use client';
 
-const CurrentStats = ({ stats, puzzles = [] }) => {
-  const totalAttempts = puzzles.reduce((sum, puzzle) => sum + (puzzle.attempts || 0), 0);
-  const avgScoreNumeric = Number.parseFloat(String(stats?.avg_score || '0').replace('%', '')) || 0;
-  const correctWords = Math.round((totalAttempts * avgScoreNumeric) / 100);
-  const performanceData = (puzzles.length > 0 ? puzzles : [
-    { title: '-', points: '0%' },
-    { title: '-', points: '0%' },
-    { title: '-', points: '0%' },
-    { title: '-', points: '0%' },
-    { title: '-', points: '0%' },
-  ]).slice(0, 5).map((item) => ({
-    name: item.title || '-',
-    score: Number.parseFloat(String(item.points || '0').replace('%', '')) || 0,
-  }));
+import React, { useMemo } from 'react';
+import { Target, Zap, TrendingUp, Award, Flame } from 'lucide-react';
+
+const C = {
+  bg: '#0f0e14', felt: '#17151f', card: '#1e1b29',
+  taupe: '#7c5cff', tan: '#22d3c9', stone: '#c7c2d9',
+  cream: '#ede9f7', muted: '#8d87a3', rust: '#ff4d6d',
+};
+
+const bar = (pct, color = C.taupe) => (
+  <div className="flex-1 h-2 rounded-full overflow-hidden" style={{ background: "rgba(255,255,255,0.06)" }}>
+    <div className="h-full rounded-full transition-all duration-1000"
+      style={{ width: `${Math.min(100, Math.max(0, pct))}%`, background: `linear-gradient(90deg, ${color}, ${color}88)` }} />
+  </div>
+);
+
+const MiniStat = ({ icon: Icon, value, label, color = C.taupe }) => (
+  <div className="flex flex-col items-center justify-center p-5 rounded-2xl border transition-all duration-200"
+    style={{ background: `linear-gradient(135deg,${C.card},${C.felt})`, borderColor: "rgba(124,92,255,0.12)" }}
+    onMouseEnter={e => e.currentTarget.style.borderColor = `${color}40`}
+    onMouseLeave={e => e.currentTarget.style.borderColor = "rgba(124,92,255,0.12)"}>
+    <div className="w-9 h-9 rounded-xl flex items-center justify-center mb-3"
+      style={{ background: `${color}15`, border: `1px solid ${color}28` }}>
+      <Icon size={18} style={{ color }} />
+    </div>
+    <div className="font-display font-black text-3xl tabular-nums" style={{ color: C.cream }}>{value}</div>
+    <div className="font-mono text-[10px] tracking-widest uppercase mt-1" style={{ color: C.muted }}>{label}</div>
+  </div>
+);
+
+const AchievementBadge = ({ icon, label, earned }) => (
+  <div className="flex flex-col items-center gap-1.5 px-3">
+    <div className="w-12 h-12 rounded-xl flex items-center justify-center text-xl transition-all duration-200"
+      style={{
+        background: earned ? "rgba(124,92,255,0.12)" : "rgba(255,255,255,0.03)",
+        border: earned ? "1px solid rgba(124,92,255,0.35)" : "1px solid rgba(255,255,255,0.06)",
+        filter: earned ? "none" : "grayscale(1) opacity(0.3)",
+      }}>
+      {icon}
+    </div>
+    <span className="font-mono text-[9px] tracking-wider uppercase text-center leading-tight"
+      style={{ color: earned ? C.taupe : C.muted }}>{label}</span>
+  </div>
+);
+
+const CurrentStats = ({ stats, puzzles = [], history = [] }) => {
+  const totalAttempts  = history.length || puzzles.reduce((s, p) => s + (p.attempts || 0), 0);
+  const avgScoreNum    = parseFloat(String(stats?.avg_score  || "0").replace("%", "")) || 0;
+  const attainNum      = parseFloat(String(stats?.attainment || "0").replace("%", "")) || 0;
+
+  const perfData = useMemo(() => {
+    const src = history.length > 0 ? history.slice(0, 6) : puzzles.slice(0, 6);
+    return src.map(item => ({
+      name:  item.puzzle_title || item.title || "—",
+      score: parseFloat(String(item.score || item.points || "0").replace("%", "")) || 0,
+    }));
+  }, [history, puzzles]);
+
+  const streak   = useMemo(() => { let s = 0; for (const h of [...history].reverse()) { if ((h.score || 0) >= 50) s++; else break; } return s; }, [history]);
+  const bestScore = useMemo(() => Math.max(0, ...history.map(h => h.score || 0)), [history]);
+  const rankOnes  = useMemo(() => history.filter(h => h.rank === 1).length, [history]);
+
+  const achievements = [
+    { icon: "🎯", label: "First Blood", earned: totalAttempts >= 1 },
+    { icon: "🔥", label: "On Fire",     earned: streak >= 3 },
+    { icon: "🏆", label: "Top Ranker",  earned: rankOnes >= 1 },
+    { icon: "💯", label: "Perfect",     earned: bestScore >= 100 },
+    { icon: "⚡", label: "Speed Demon", earned: history.some(h => (h.completion_time || 999) < 60) },
+    { icon: "📚", label: "Scholar",     earned: totalAttempts >= 5 },
+  ];
+
+  const scoreColor = s => s >= 80 ? C.taupe : s >= 50 ? C.tan : "#e07070";
 
   return (
-    <div className="w-full max-w-5xl font-sans text-white">
-      
-      {/* 🌟 HEADER 🌟 */}
-      <h2 className="text-4xl font-bold text-[#d88c8c] mb-6 tracking-wide drop-shadow-md">
-        Current Statistics
-      </h2>
+    <div className="w-full max-w-5xl space-y-6 animate-fade-up">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <MiniStat icon={Flame}      value={totalAttempts}             label="Puzzles Done" color={C.taupe} />
+        <MiniStat icon={Target}     value={`${Math.round(avgScoreNum)}%`} label="Avg Score" color={C.tan} />
+        <MiniStat icon={TrendingUp} value={`${Math.round(attainNum)}%`}   label="Attainment" color={C.taupe} />
+        <MiniStat icon={Zap}        value={streak}                    label="Win Streak"   color={C.tan} />
+      </div>
 
-      <div className="bg-[#18181a] rounded-2xl p-6 md:p-8 shadow-[0_15px_40px_rgba(0,0,0,0.6)] border border-white/5">
-        
-        {/* 🌟 TOP ROW: 4 STAT CARDS 🌟 */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-          
-          {/* Card 1 */}
-          <div className="bg-[#111111] rounded-xl p-6 flex flex-col items-center justify-center border border-white/5 shadow-inner">
-            <div className="text-5xl font-semibold mb-3 tracking-tight">{totalAttempts}</div>
-            <div className="flex items-center gap-2 text-sm text-gray-300 font-medium">
-              <ChevronDown size={18} color="#E53935" strokeWidth={3} /> Total Attempts
-            </div>
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Performance bars */}
+        <div className="lg:col-span-2 rounded-2xl border p-6"
+          style={{ background: `linear-gradient(135deg,${C.card},${C.felt})`, borderColor: "rgba(124,92,255,0.12)" }}>
+          <div className="flex items-center gap-2 mb-5 pb-4 border-b" style={{ borderColor: "rgba(124,92,255,0.08)" }}>
+            <span style={{ color: C.taupe }}>★</span>
+            <h3 className="font-display font-bold text-lg" style={{ color: C.cream }}>Puzzle Performance</h3>
           </div>
-          
-          {/* Card 2 */}
-          <div className="bg-[#111111] rounded-xl p-6 flex flex-col items-center justify-center border border-white/5 shadow-inner">
-            <div className="text-5xl font-semibold mb-3 tracking-tight">{correctWords}</div>
-            <div className="flex items-center gap-2 text-sm text-gray-300 font-medium">
-              <MapPin size={18} color="#E53935" className="fill-[#E53935]/20" /> Correct Words
-            </div>
-          </div>
-          
-          {/* Card 3 */}
-          <div className="bg-[#111111] rounded-xl p-6 flex flex-col items-center justify-center border border-white/5 shadow-inner">
-            <div className="text-5xl font-semibold mb-3 tracking-tight">{stats?.avg_score || '0%'}</div>
-            <div className="flex items-center gap-2 text-sm text-gray-300 font-medium">
-              <Target size={18} color="#E53935" /> Accuracy Rate
-            </div>
-          </div>
-          
-          {/* Card 4 */}
-          <div className="bg-[#111111] rounded-xl p-6 flex flex-col items-center justify-center border border-white/5 shadow-inner">
-            <div className="text-4xl lg:text-5xl font-semibold mb-3 tracking-tight">{stats?.attainment || '0%'}</div>
-            <div className="flex items-center gap-2 text-sm text-gray-300 font-medium">
-              <Star size={18} color="#E53935" className="fill-[#E53935]" /> Avg Solv Time
-            </div>
-          </div>
-
-        </div>
-
-        {/* 🌟 BOTTOM ROW: TWO COLUMNS 🌟 */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          
-          {/* LEFT COLUMN: Puzzle Performance */}
-          <div className="lg:col-span-2 bg-[#111111] rounded-xl p-6 border border-white/5 shadow-inner">
-            <h3 className="text-xl font-bold text-gray-200 mb-6 border-b-2 border-[#E53935] inline-block pb-1 pr-4">
-              Puzzle Performance
-            </h3>
-            
-            <div className="flex flex-col gap-5">
-              {performanceData.map((item, index) => (
-                <div key={index} className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 sm:gap-4">
-                  <span className="text-sm text-gray-500 font-medium w-40 truncate">
-                    {item.name}
-                  </span>
-                  
-                  {/* Progress Bar Container */}
-                  <div className="flex-1 flex items-center gap-4">
-                    <div className="w-full h-3 bg-[#2a2a2a] rounded-full overflow-hidden">
-                      <div 
-                        className="h-full bg-[#E53935] rounded-full transition-all duration-1000 ease-out"
-                        style={{ width: `${item.score}%` }}
-                      ></div>
-                    </div>
-                    <span className="text-xs text-gray-500 font-medium w-8 text-right">
-                      {item.score}%
-                    </span>
-                  </div>
+          {perfData.length === 0 ? (
+            <div className="text-center font-mono text-sm py-8" style={{ color: C.muted }}>Play a puzzle to see your scores here.</div>
+          ) : (
+            <div className="space-y-4">
+              {perfData.map((item, i) => (
+                <div key={i} className="flex items-center gap-4">
+                  <span className="font-mono text-[11px] w-32 truncate shrink-0" style={{ color: C.muted }}>{item.name}</span>
+                  {bar(item.score, scoreColor(item.score))}
+                  <span className="font-mono text-xs font-bold w-10 text-right shrink-0" style={{ color: scoreColor(item.score) }}>{Math.round(item.score)}%</span>
                 </div>
               ))}
             </div>
+          )}
+        </div>
+
+        {/* Achievements */}
+        <div className="rounded-2xl border p-6 flex flex-col"
+          style={{ background: `linear-gradient(135deg,${C.card},${C.felt})`, borderColor: "rgba(124,92,255,0.12)" }}>
+          <div className="flex items-center gap-2 mb-5 pb-4 border-b" style={{ borderColor: "rgba(124,92,255,0.08)" }}>
+            <Award size={16} color={C.taupe} />
+            <h3 className="font-display font-bold text-lg" style={{ color: C.cream }}>Achievements</h3>
           </div>
-
-          {/* RIGHT COLUMN: Weekly Activity Chart */}
-          <div className="lg:col-span-1 bg-[#111111] rounded-xl p-6 border border-white/5 shadow-inner flex flex-col">
-            <h3 className="text-xl font-bold text-gray-200 mb-6 border-b-2 border-[#E53935] inline-block pb-1 pr-4 self-start">
-              Weekly Activity
-            </h3>
-            
-            {/* Custom SVG Line Chart - FIXED: Flattened to Zero */}
-            <div className="flex-1 relative w-full min-h-[160px] mt-2 border-l border-b border-gray-700">
-              
-              {/* Y-Axis Labels */}
-              <div className="absolute -left-6 top-0 text-[10px] text-gray-600">100</div>
-              <div className="absolute -left-5 top-1/4 text-[10px] text-gray-600">80</div>
-              <div className="absolute -left-5 top-1/2 text-[10px] text-gray-600">60</div>
-
-              {/* Grid Lines */}
-              <div className="absolute top-1/4 w-full border-t border-gray-800/30"></div>
-              <div className="absolute top-1/2 w-full border-t border-gray-800/30"></div>
-              <div className="absolute left-1/4 h-full border-l border-gray-800/30"></div>
-              <div className="absolute left-1/2 h-full border-l border-gray-800/30"></div>
-              <div className="absolute left-3/4 h-full border-l border-gray-800/30"></div>
-
-              {/* The Line and Dots - Flattened along the bottom (y=95) */}
-              <svg viewBox="0 0 100 100" preserveAspectRatio="none" className="w-full h-full absolute inset-0 overflow-visible">
-                <path 
-                  d="M 0,95 L 100,95" 
-                  fill="none" 
-                  stroke="rgba(229,57,53,0.1)" 
-                  strokeWidth="6" 
-                  className="blur-sm"
-                />
-                <path 
-                  d="M 0,95 L 100,95" 
-                  fill="none" 
-                  stroke="#E53935" 
-                  strokeWidth="2.5" 
-                />
-                <circle cx="5" cy="95" r="2.5" fill="#111111" stroke="#E53935" strokeWidth="1.5" />
-                <circle cx="28" cy="95" r="2.5" fill="#111111" stroke="#E53935" strokeWidth="1.5" />
-                <circle cx="50" cy="95" r="2.5" fill="#111111" stroke="#E53935" strokeWidth="1.5" />
-                <circle cx="75" cy="95" r="2.5" fill="#111111" stroke="#E53935" strokeWidth="1.5" />
-                <circle cx="95" cy="95" r="2.5" fill="#111111" stroke="#E53935" strokeWidth="1.5" />
-              </svg>
-
-              {/* X-Axis Labels - Reset to placeholders */}
-              <div className="absolute -bottom-6 w-full flex justify-between text-[10px] text-gray-600 px-1">
-                <span>-</span>
-                <span>-</span>
-                <span>-</span>
-                <span>-</span>
-                <span>-</span>
-              </div>
-
+          <div className="grid grid-cols-3 gap-y-4 place-items-center flex-1">
+            {achievements.map((a, i) => <AchievementBadge key={i} {...a} />)}
+          </div>
+          <div className="mt-5 pt-4 border-t text-center" style={{ borderColor: "rgba(124,92,255,0.08)" }}>
+            <div className="font-mono text-[10px] uppercase tracking-widest mb-1" style={{ color: C.muted }}>Unlocked</div>
+            <div className="font-display font-black text-2xl" style={{ color: C.taupe }}>
+              {achievements.filter(a => a.earned).length}
+              <span className="font-mono font-normal text-base" style={{ color: C.muted }}>/{achievements.length}</span>
             </div>
           </div>
-
         </div>
       </div>
+
+      {bestScore > 0 && (
+        <div className="rounded-2xl p-5 border flex items-center gap-5"
+          style={{ background: "rgba(124,92,255,0.06)", borderColor: "rgba(124,92,255,0.2)" }}>
+          <div className="w-12 h-12 rounded-xl flex items-center justify-center text-2xl shrink-0"
+            style={{ background: "rgba(124,92,255,0.12)", border: "1px solid rgba(124,92,255,0.28)" }}>🏅</div>
+          <div>
+            <div className="font-mono text-[10px] tracking-widest uppercase mb-0.5" style={{ color: C.muted }}>Personal Best</div>
+            <div className="font-display font-black text-3xl" style={{ color: C.cream }}>{Math.round(bestScore)}%</div>
+          </div>
+          <div className="ml-auto text-right">
+            <div className="font-mono text-[10px] tracking-widest uppercase mb-0.5" style={{ color: C.muted }}>Top Rankings</div>
+            <div className="font-display font-black text-3xl" style={{ color: C.taupe }}>#{rankOnes} 🥇</div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

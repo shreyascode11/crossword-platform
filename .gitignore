@@ -13,6 +13,7 @@ frontend-test/node_modules/
 # Environment
 .env
 *.env
+.env*.local
 
-# Vite build
-frontend-test/dist/
+# Next.js build
+frontend-test/.next/

@@ -7,6 +7,7 @@ from .views import (
     check_answer,
     stats,
     login,
+    logout,
     create_puzzle,
     add_clues,
     publish_puzzle,
@@ -34,6 +35,7 @@ from .views import (
 
 urlpatterns = [
     path('login/', login, name='login'),
+    path('logout/', logout, name='logout'),
     path('puzzles/', puzzle_list, name='puzzle_list'),
     path('puzzles/<int:puzzle_id>/preview/', puzzle_preview, name='puzzle_preview'),
     path('puzzles/<int:puzzle_id>/regenerate/', regenerate_layout, name='regenerate_layout'),

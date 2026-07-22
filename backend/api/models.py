@@ -1,3 +1,5 @@
+import secrets as _secrets
+
 from django.db import models
 from django.utils import timezone
 
@@ -58,7 +60,7 @@ class Clue(models.Model):
 
 class Attempt(models.Model):
     puzzle = models.ForeignKey(Puzzle, related_name='attempts_list', on_delete=models.CASCADE)
-    student_reg_no = models.CharField(max_length=20)  # unique student ID
+    student_reg_no = models.CharField(max_length=50)
     score = models.FloatField(default=0)
     completion_time = models.IntegerField(default=0)  # seconds
     solved_words_count = models.IntegerField(default=0)
@@ -69,5 +71,22 @@ class Attempt(models.Model):
     submitted_at = models.DateTimeField(auto_now_add=True)
     answers = models.JSONField(default=dict)  # e.g., {"0_across": "HELLO", "1_down": "WORLD"}
 
+    class Meta:
+        unique_together = [('puzzle', 'student_reg_no')]
+
     def __str__(self):
         return f"{self.student_reg_no} - {self.puzzle.title}"
+
+
+class AuthToken(models.Model):
+    token = models.CharField(max_length=64, unique=True, db_index=True)
+    role = models.CharField(max_length=20)
+    user_id = models.CharField(max_length=100)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    @classmethod
+    def create_for(cls, role, user_id):
+        return cls.objects.create(token=_secrets.token_hex(32), role=role, user_id=user_id)
+
+    def __str__(self):
+        return f"{self.role}:{self.user_id}"

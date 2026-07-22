@@ -1,0 +1,439 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>CrossWord Platform — User Guide</title>
+<style>
+  @import url("https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=Space+Mono:wght@400;700&family=Inter:wght@300;400;500;600;700&display=swap");
+
+  :root {
+    --violet: #6d3fff;   /* Teacher */
+    --cyan:   #0d9488;   /* Student */
+    --rose:   #e11d5b;   /* Admin */
+    --ink:    #14131c;
+    --body:   #33313d;
+    --muted:  #6c6880;
+    --rule:   #e4e1ef;
+    --paper:  #ffffff;
+    --tint:   #f6f4fc;
+  }
+
+  * { box-sizing: border-box; }
+
+  @page {
+    size: A4;
+    margin: 20mm 0;
+  }
+
+  html, body { margin: 0; padding: 0; }
+
+  body {
+    font-family: "Inter", system-ui, sans-serif;
+    color: var(--body);
+    font-size: 10.5pt;
+    line-height: 1.55;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  .page { width: 170mm; margin: 0 auto; padding: 0 4mm; }
+
+  /* ── Cover ─────────────────────────────── */
+  .cover {
+    text-align: center;
+    padding: 40mm 0 30mm;
+    page-break-after: always;
+  }
+  .cover .eyebrow {
+    font-family: "Space Mono", monospace;
+    letter-spacing: 0.4em;
+    text-transform: uppercase;
+    font-size: 9pt;
+    color: var(--violet);
+    margin-bottom: 14mm;
+  }
+  .cover h1 {
+    font-family: "Playfair Display", serif;
+    font-weight: 900;
+    font-size: 52pt;
+    line-height: 1;
+    color: var(--ink);
+    margin: 0 0 6mm;
+  }
+  .cover h1 .x { color: var(--violet); }
+  .cover .sub {
+    font-family: "Playfair Display", serif;
+    font-style: italic;
+    font-size: 17pt;
+    color: var(--body);
+    margin-bottom: 20mm;
+  }
+  .cover .tag {
+    font-family: "Space Mono", monospace;
+    font-size: 9pt;
+    letter-spacing: 0.25em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+  .cover .roles { display: flex; justify-content: center; gap: 8mm; margin: 16mm 0 0; }
+  .cover .chip {
+    font-family: "Space Mono", monospace;
+    font-size: 8.5pt;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    padding: 3mm 6mm;
+    border-radius: 2mm;
+    font-weight: 700;
+  }
+  .chip.t { background: rgba(109,63,255,0.10); color: var(--violet); }
+  .chip.s { background: rgba(13,148,136,0.10); color: var(--cyan); }
+  .chip.a { background: rgba(225,29,91,0.10);  color: var(--rose); }
+
+  /* ── Headings ──────────────────────────── */
+  h2 {
+    font-family: "Playfair Display", serif;
+    font-weight: 700;
+    font-size: 21pt;
+    color: var(--ink);
+    margin: 0 0 3mm;
+    padding-bottom: 2.5mm;
+    border-bottom: 2px solid var(--rule);
+  }
+  .section { page-break-inside: avoid; margin-bottom: 9mm; }
+  .section-lead + h2 { margin-top: 0; }
+  h3 {
+    font-family: "Inter", sans-serif;
+    font-weight: 700;
+    font-size: 12pt;
+    color: var(--ink);
+    margin: 6mm 0 2mm;
+  }
+  .num {
+    font-family: "Space Mono", monospace;
+    color: var(--violet);
+    font-size: 10pt;
+    margin-right: 2mm;
+  }
+
+  p { margin: 0 0 2.5mm; }
+  .lead { color: var(--muted); font-size: 10.5pt; margin-bottom: 5mm; }
+
+  ul, ol { margin: 0 0 3mm; padding-left: 6mm; }
+  li { margin-bottom: 1.5mm; }
+
+  code, .mono {
+    font-family: "Space Mono", monospace;
+    font-size: 9pt;
+    background: var(--tint);
+    padding: 0.5mm 1.5mm;
+    border-radius: 1mm;
+    color: var(--ink);
+  }
+  pre {
+    font-family: "Space Mono", monospace;
+    font-size: 8.5pt;
+    line-height: 1.5;
+    background: var(--ink);
+    color: #ede9f7;
+    padding: 4mm 5mm;
+    border-radius: 2mm;
+    overflow-x: auto;
+    margin: 0 0 4mm;
+    white-space: pre-wrap;
+  }
+  pre .c { color: #8d87a3; }
+
+  .role-band {
+    display: inline-block;
+    font-family: "Space Mono", monospace;
+    font-size: 8pt;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    font-weight: 700;
+    padding: 1.5mm 4mm;
+    border-radius: 1.5mm;
+    margin-bottom: 3mm;
+    color: #fff;
+  }
+  .role-band.t { background: var(--violet); }
+  .role-band.s { background: var(--cyan); }
+  .role-band.a { background: var(--rose); }
+
+  table { width: 100%; border-collapse: collapse; margin: 0 0 4mm; font-size: 9.5pt; }
+  th, td { text-align: left; padding: 2mm 3mm; border-bottom: 1px solid var(--rule); vertical-align: top; }
+  th {
+    font-family: "Space Mono", monospace;
+    font-size: 8pt;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--muted);
+    background: var(--tint);
+  }
+  td .feat { font-weight: 600; color: var(--ink); }
+
+  .callout {
+    background: var(--tint);
+    border-left: 3px solid var(--violet);
+    padding: 3mm 4mm;
+    border-radius: 0 2mm 2mm 0;
+    margin: 0 0 4mm;
+    font-size: 9.5pt;
+  }
+  .callout strong { color: var(--ink); }
+
+  .toc { page-break-after: always; }
+  .toc ol { list-style: none; padding: 0; counter-reset: toc; }
+  .toc li {
+    counter-increment: toc;
+    display: flex;
+    align-items: baseline;
+    padding: 2.5mm 0;
+    border-bottom: 1px solid var(--rule);
+    font-size: 11pt;
+  }
+  .toc li::before {
+    content: counter(toc, decimal-leading-zero);
+    font-family: "Space Mono", monospace;
+    color: var(--violet);
+    font-size: 9pt;
+    margin-right: 5mm;
+  }
+  .toc .t-title { font-weight: 600; color: var(--ink); }
+  .toc .t-desc { color: var(--muted); font-size: 9pt; margin-left: auto; padding-left: 5mm; }
+
+  .footer-note {
+    font-family: "Space Mono", monospace;
+    font-size: 8pt;
+    color: var(--muted);
+    text-align: center;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    margin-top: 10mm;
+  }
+</style>
+</head>
+<body>
+
+  <!-- ─────────── COVER ─────────── -->
+  <div class="page cover">
+    <div class="eyebrow">✦ User Guide · Academic Edition</div>
+    <h1>Cro<span class="x">×</span>word</h1>
+    <div class="sub">Puzzle Generator &amp; Assessment Platform</div>
+    <div class="tag">How to use the platform — a guide for Teachers, Students &amp; Admins</div>
+    <div class="roles">
+      <span class="chip t">Teacher</span>
+      <span class="chip s">Student</span>
+      <span class="chip a">Admin</span>
+    </div>
+  </div>
+
+  <!-- ─────────── CONTENTS ─────────── -->
+  <div class="page toc">
+    <h2>Contents</h2>
+    <ol>
+      <li><span class="t-title">What is CrossWord?</span><span class="t-desc">Overview &amp; how it works</span></li>
+      <li><span class="t-title">Starting the platform</span><span class="t-desc">Run the backend &amp; frontend</span></li>
+      <li><span class="t-title">Logging in</span><span class="t-desc">The three roles</span></li>
+      <li><span class="t-title">For Teachers</span><span class="t-desc">Create, publish &amp; analyse puzzles</span></li>
+      <li><span class="t-title">For Students</span><span class="t-desc">Play puzzles &amp; track progress</span></li>
+      <li><span class="t-title">For Admins</span><span class="t-desc">Manage teachers &amp; students</span></li>
+      <li><span class="t-title">Tips &amp; troubleshooting</span><span class="t-desc">Common questions</span></li>
+    </ol>
+  </div>
+
+  <!-- ─────────── 1. OVERVIEW ─────────── -->
+  <div class="page">
+    <div class="section">
+      <h2>1 · What is CrossWord?</h2>
+      <p class="lead">CrossWord is a web platform for creating, playing, and grading crossword puzzles in a classroom setting. Teachers build puzzles (by hand or with AI from a document), students play them as timed, gamified challenges, and everyone sees live leaderboards and performance analytics.</p>
+
+      <h3>The three roles at a glance</h3>
+      <table>
+        <thead><tr><th>Role</th><th>Signs in with</th><th>Can do</th></tr></thead>
+        <tbody>
+          <tr><td><span class="feat" style="color:var(--violet)">Teacher</span></td><td class="mono">Teacher ID</td><td>Create &amp; publish puzzles, manage a class roster, view analytics</td></tr>
+          <tr><td><span class="feat" style="color:var(--cyan)">Student</span></td><td class="mono">Registration No.</td><td>Play published puzzles, view attempts, stats &amp; leaderboards</td></tr>
+          <tr><td><span class="feat" style="color:var(--rose)">Admin</span></td><td class="mono">Username</td><td>Create/remove teachers, view all students platform-wide</td></tr>
+        </tbody>
+      </table>
+
+      <div class="callout">
+        <strong>How it flows:</strong> An Admin creates Teacher accounts → a Teacher uploads their class roster and builds puzzles → the Teacher publishes a puzzle → Students log in, play it, and submit → scores appear instantly on leaderboards and in the Teacher's analytics.
+      </div>
+    </div>
+  </div>
+
+  <!-- ─────────── 2. STARTING ─────────── -->
+  <div class="page">
+    <div class="section">
+      <h2>2 · Starting the platform</h2>
+      <p class="lead">CrossWord has three pieces: a <strong>PostgreSQL database</strong> (stores everything), a <strong>Django backend</strong> (the API), and a <strong>Next.js frontend</strong> (the website you interact with). Set up the database once, then start the backend and frontend together.</p>
+
+      <h3><span class="num">A</span>Set up the database (PostgreSQL)</h3>
+      <p>The backend stores its data in PostgreSQL, so a Postgres server must be installed and running before the backend can start.</p>
+      <pre><span class="c"># install &amp; start PostgreSQL (macOS example)</span>
+brew install postgresql@16
+brew services start postgresql@16
+
+createdb crossword               <span class="c"># create the database</span></pre>
+      <p>Then open <code>backend/.env</code> and fill in your connection details so the backend can reach it:</p>
+      <pre><span class="c"># backend/.env</span>
+DB_NAME=crossword
+DB_USER=postgres
+DB_PASSWORD=<span class="c">your-db-password</span>
+DB_HOST=localhost
+DB_PORT=5432</pre>
+
+      <h3><span class="num">B</span>Start the backend (API)</h3>
+      <pre><span class="c"># from the project folder</span>
+cd backend
+source venv/bin/activate        <span class="c"># Windows: venv\Scripts\activate</span>
+pip install -r requirements.txt <span class="c"># first time only</span>
+python manage.py migrate         <span class="c"># builds tables in Postgres (first time)</span>
+python manage.py runserver       <span class="c"># serves http://127.0.0.1:8000</span></pre>
+
+      <h3><span class="num">C</span>Start the frontend (website)</h3>
+      <pre><span class="c"># in a second terminal</span>
+cd frontend-test
+npm install                      <span class="c"># first time only</span>
+npm run dev                      <span class="c"># serves http://localhost:3000</span></pre>
+
+      <p>Then open <code>http://localhost:3000</code> in your browser. Keep the database, backend, and frontend all running while you use the app.</p>
+
+      <div class="callout">
+        <strong>First-time Admin:</strong> after the first <code>migrate</code>, create the very first admin account with
+        <code>python manage.py createsuperuser</code> in the backend folder. That username/password is your Admin login.
+      </div>
+    </div>
+  </div>
+
+  <!-- ─────────── 3. LOGIN ─────────── -->
+  <div class="page">
+    <div class="section">
+      <h2>3 · Logging in</h2>
+      <p class="lead">The login screen has three tabs — <strong>Teacher</strong>, <strong>Student</strong>, and <strong>Admin</strong>. Each tab is colour-coded so you always know which portal you're entering.</p>
+      <table>
+        <thead><tr><th>Tab</th><th>Colour</th><th>Enter</th></tr></thead>
+        <tbody>
+          <tr><td class="feat">Teacher</td><td>Violet</td><td>Your Teacher ID + password (given to you by an Admin)</td></tr>
+          <tr><td class="feat">Student</td><td>Cyan</td><td>Your Registration Number + password (given to you by your Teacher)</td></tr>
+          <tr><td class="feat">Admin</td><td>Rose</td><td>Your superuser username + password</td></tr>
+        </tbody>
+      </table>
+      <ol>
+        <li>Pick the tab that matches your role.</li>
+        <li>Type your ID and password (use the eye icon to reveal the password if needed).</li>
+        <li>Press <strong>Sign In</strong> — you'll land on your role's dashboard.</li>
+        <li>To leave, use <strong>Sign Out</strong> at the bottom of the sidebar.</li>
+      </ol>
+    </div>
+  </div>
+
+  <!-- ─────────── 4. TEACHERS ─────────── -->
+  <div class="page">
+    <div class="section">
+      <span class="role-band t">Teacher Portal</span>
+      <h2>4 · For Teachers</h2>
+      <p class="lead">Your sidebar has six areas. Here's what each one does.</p>
+
+      <h3><span class="num">1</span>My Puzzles</h3>
+      <p>Your home dashboard. The four tiles at the top summarise <strong>Total Puzzles</strong>, <strong>Assistances</strong> (hints used by students), <strong>Attainment</strong>, and <strong>Average Score</strong>. Below is a table of every puzzle you've made, each with a status of <strong>Draft</strong>, <strong>Published</strong>, or <strong>Archived</strong>, and action buttons:</p>
+      <ul>
+        <li><strong>Edit</strong> — open a draft to change its grid or clues.</li>
+        <li><strong>Publish</strong> — make a draft live so students can play it.</li>
+        <li><strong>Archive</strong> — retire a puzzle (hidden from students, kept for records).</li>
+        <li><strong>Analytics</strong> — jump to the performance breakdown for that puzzle.</li>
+        <li><strong>Delete</strong> — remove a draft. (Published puzzles can't be deleted — archive them instead.)</li>
+      </ul>
+
+      <h3><span class="num">2</span>Create Puzzle</h3>
+      <p>Two ways to build a puzzle:</p>
+      <ul>
+        <li><strong>Manual Entry</strong> — set a title, timer, access window, difficulty, and whether hints are allowed, then <em>Generate Grid</em> and add your own clues.</li>
+        <li><strong>AI from Document</strong> — upload a document (PDF/Word) and the platform's AI reads it and drafts clues for you automatically. Review and tweak before publishing.</li>
+      </ul>
+
+      <h3><span class="num">3</span>Add Content</h3>
+      <p>Open a puzzle to preview its grid and clue list, make final edits, generate a <strong>printable version</strong> (great for a paper copy or exporting to PDF), and <strong>Publish</strong> when it's ready.</p>
+
+      <h3><span class="num">4</span>Students</h3>
+      <p>Manage your class roster. <strong>Import</strong> students in bulk by uploading a CSV with the format <code>name, reg_no, password</code> (one student per row). From the roster you can <strong>reset a student's password</strong> or <strong>remove</strong> a student.</p>
+
+      <h3><span class="num">5</span>Leaderboard</h3>
+      <p>Pick any of your published puzzles to see a ranked table of students by score, completion time, and hints used.</p>
+
+      <h3><span class="num">6</span>Analytics</h3>
+      <p>Per-puzzle insight: average score, completion rate, average time, and the clues students most often get wrong — so you can see where a class is struggling.</p>
+    </div>
+  </div>
+
+  <!-- ─────────── 5. STUDENTS ─────────── -->
+  <div class="page">
+    <div class="section">
+      <span class="role-band s">Student Portal</span>
+      <h2>5 · For Students</h2>
+      <p class="lead">Your sidebar is built around playing puzzles and tracking how you're doing.</p>
+
+      <h3><span class="num">1</span>Play Puzzles</h3>
+      <p>A gallery of every puzzle available to you, shown as cards with a difficulty rating. Click a card to open it. Puzzles you've finished are marked <strong>Done</strong> — reopening them lets you review your answers.</p>
+      <p>Inside a puzzle: type answers into the grid, use <strong>Check Answer</strong> to test a word, reveal a <strong>Hint</strong> if the teacher allowed them (this counts against your score), watch the <strong>timer</strong>, and press <strong>Submit</strong> when you're done. You'll immediately see your score and rank.</p>
+
+      <table>
+        <thead><tr><th>Sidebar item</th><th>What it shows</th></tr></thead>
+        <tbody>
+          <tr><td class="feat">My Attempts</td><td>Every puzzle you've submitted, with score, time, and rank (🥇🥈🥉 for the top three).</td></tr>
+          <tr><td class="feat">My Stats</td><td>Your personal totals and averages across all puzzles.</td></tr>
+          <tr><td class="feat">Leaderboard</td><td>How you rank against classmates on each puzzle.</td></tr>
+          <tr><td class="feat">Report</td><td>A performance summary of your results.</td></tr>
+          <tr><td class="feat">Re-analyse</td><td>Revisit past attempts to review what you got right and wrong.</td></tr>
+        </tbody>
+      </table>
+
+      <div class="callout">
+        <strong>Note:</strong> each puzzle can be submitted once. Play carefully — using hints lowers your final score, so only reveal one when you're stuck.
+      </div>
+    </div>
+  </div>
+
+  <!-- ─────────── 6. ADMINS ─────────── -->
+  <div class="page">
+    <div class="section">
+      <span class="role-band a">Admin Console</span>
+      <h2>6 · For Admins</h2>
+      <p class="lead">Admins set up and oversee the accounts on the platform. Your sidebar has two areas.</p>
+
+      <h3><span class="num">1</span>Teachers</h3>
+      <p>Create a new teacher by entering a <strong>Teacher ID</strong>, <strong>Name</strong>, and <strong>Password</strong>, then <em>Create Teacher</em>. Hand those credentials to the teacher so they can log in. You can also <strong>delete</strong> a teacher from the same list.</p>
+
+      <h3><span class="num">2</span>Students</h3>
+      <p>A read-only, platform-wide view of every student — their name, registration number, the teacher they belong to, and when they were added. Useful for auditing the whole institution at once.</p>
+
+      <div class="callout">
+        <strong>Setup order:</strong> create teachers first. Each teacher then imports their own students (Teacher → Students → import CSV), which is why student creation lives in the Teacher portal, not here.
+      </div>
+    </div>
+  </div>
+
+  <!-- ─────────── 7. TIPS ─────────── -->
+  <div class="page">
+    <div class="section">
+      <h2>7 · Tips &amp; troubleshooting</h2>
+      <table>
+        <thead><tr><th>Situation</th><th>What to do</th></tr></thead>
+        <tbody>
+          <tr><td class="feat">Nothing loads / "failed to load"</td><td>Make sure the backend is running at <code>127.0.0.1:8000</code> and the frontend at <code>localhost:3000</code>. Both must be running at once.</td></tr>
+          <tr><td class="feat">Backend won't start / DB connection error</td><td>PostgreSQL must be running and the <code>crossword</code> database must exist, with matching credentials in <code>backend/.env</code>. Start Postgres, then <code>createdb crossword</code> and re-run <code>migrate</code>.</td></tr>
+          <tr><td class="feat">Student can't see a puzzle</td><td>The teacher must <strong>Publish</strong> it. Drafts and archived puzzles are hidden from students.</td></tr>
+          <tr><td class="feat">Student forgot their password</td><td>Their teacher resets it in Teacher → Students → Reset Password.</td></tr>
+          <tr><td class="feat">Teacher forgot their password</td><td>An Admin removes and re-creates the teacher account with a new password.</td></tr>
+          <tr><td class="feat">"Puzzle already submitted"</td><td>Each puzzle allows one submission per student — this is expected.</td></tr>
+          <tr><td class="feat">Want a paper copy of a puzzle</td><td>Teacher → Add Content → printable export, then print or "Save as PDF" from your browser.</td></tr>
+        </tbody>
+      </table>
+
+      <div class="footer-note">CrossWord Platform · Academic Edition · User Guide</div>
+    </div>
+  </div>
+
+</body>
+</html>

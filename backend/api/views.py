@@ -1,13 +1,21 @@
 from collections import defaultdict
 import csv
 import io
+import itertools
 import json
 import logging
 import os
 import re
+from datetime import timedelta
+from functools import wraps
 
 from django.contrib.auth import authenticate
+from django.contrib.auth.hashers import check_password, make_password
+from django.core.cache import cache
+from django.db import IntegrityError
 from django.http import HttpResponse
+from django.utils import timezone
+from django.utils.html import escape
 from rest_framework.decorators import api_view, parser_classes
 from rest_framework.parsers import FormParser, MultiPartParser
 from rest_framework.response import Response
@@ -32,7 +40,7 @@ from .crossword_layout import (
     generate_crossword_layout,
     build_letter_grid_from_placements,
 )
-from .models import Attempt, Clue, Puzzle, Student, Teacher
+from .models import Attempt, AuthToken, Clue, Puzzle, Student, Teacher
 from .serializers import AttemptSerializer, PuzzleSerializer
 
 logger = logging.getLogger(__name__)
@@ -42,7 +50,72 @@ MAX_ANSWER_LENGTH = 25
 MAX_UPLOAD_BYTES = 5 * 1024 * 1024
 
 
+# ---------------------------------------------------------------------------
+# Auth decorator
+# ---------------------------------------------------------------------------
 
+AUTH_TOKEN_TTL_HOURS = int(os.environ.get('AUTH_TOKEN_TTL_HOURS', '12'))
+
+
+def require_auth(*roles):
+    """Require a valid, unexpired AuthToken header. Optionally restrict roles."""
+    def decorator(fn):
+        @wraps(fn)
+        def wrapper(request, *args, **kwargs):
+            header = request.headers.get('Authorization', '')
+            token_str = header[6:].strip() if header.startswith('Token ') else ''
+            if not token_str:
+                return Response({'error': 'Authentication required'}, status=401)
+            try:
+                auth = AuthToken.objects.get(token=token_str)
+            except AuthToken.DoesNotExist:
+                return Response({'error': 'Invalid or expired token'}, status=401)
+
+            # Expire stale tokens so a leaked one is not valid forever.
+            age = timezone.now() - auth.created_at
+            if age > timedelta(hours=AUTH_TOKEN_TTL_HOURS):
+                auth.delete()
+                return Response({'error': 'Session expired. Please sign in again.'}, status=401)
+
+            if roles and auth.role not in roles:
+                return Response({'error': 'Forbidden'}, status=403)
+            request.auth = auth
+            return fn(request, *args, **kwargs)
+        return wrapper
+    return decorator
+
+
+# ---------------------------------------------------------------------------
+# Identity helpers — always derive role/identity from the verified token,
+# never from client-supplied query params or request bodies.
+# ---------------------------------------------------------------------------
+
+def _auth_role(request):
+    return getattr(getattr(request, 'auth', None), 'role', '') or ''
+
+
+def _auth_user_id(request):
+    return getattr(getattr(request, 'auth', None), 'user_id', '') or ''
+
+
+def _is_admin(request):
+    return _auth_role(request) == 'Admin'
+
+
+def _owns(request, owner_teacher_id):
+    """True if the caller is Admin, or the teacher that owns the object."""
+    if _is_admin(request):
+        return True
+    return bool(owner_teacher_id) and _auth_user_id(request) == owner_teacher_id
+
+
+def _forbidden(message='Forbidden'):
+    return Response({'error': message}, status=403)
+
+
+# ---------------------------------------------------------------------------
+# Internal helpers
+# ---------------------------------------------------------------------------
 
 def _extract_text_from_upload(upload):
     if not upload:
@@ -70,9 +143,85 @@ def _extract_text_from_upload(upload):
     raise ValueError("Unsupported file type. Upload PDF or DOCX only.")
 
 
-def generate_clues_with_groq(text, difficulty, num_questions, topic_hint=None):
-    client = Groq(api_key=os.environ.get("GROQ_API_KEY"))
+# ---------------------------------------------------------------------------
+# Groq API key pool
+# ---------------------------------------------------------------------------
 
+# Rotates the starting key per request so load is spread across the pool
+# instead of always hammering (and rate-limiting) the first key.
+_groq_key_cursor = itertools.count()
+
+# Highest GROQ_API_KEY_<n> slot we look for in the environment.
+MAX_GROQ_KEY_SLOTS = 10
+
+
+def _get_groq_api_keys():
+    """Return every configured Groq API key, in priority order, de-duplicated.
+
+    Keys may be supplied either as a comma-separated ``GROQ_API_KEYS`` list or
+    as numbered slots: ``GROQ_API_KEY``, ``GROQ_API_KEY_2``, ``GROQ_API_KEY_3``…
+    Both styles can be mixed; blank slots are skipped.
+    """
+    candidates = [raw for raw in os.environ.get("GROQ_API_KEYS", "").split(",")]
+    candidates.append(os.environ.get("GROQ_API_KEY", ""))
+    candidates.extend(
+        os.environ.get(f"GROQ_API_KEY_{slot}", "")
+        for slot in range(2, MAX_GROQ_KEY_SLOTS + 1)
+    )
+
+    keys = []
+    seen = set()
+    for candidate in candidates:
+        key = (candidate or "").strip()
+        if key and key not in seen:
+            seen.add(key)
+            keys.append(key)
+    return keys
+
+
+def _mask_key(api_key):
+    """Last-4 identifier for logs — never log a full API key."""
+    return f"***{api_key[-4:]}" if len(api_key) >= 4 else "***"
+
+
+def generate_clues_with_groq(text, difficulty, num_questions, topic_hint=None):
+    """Generate clue/answer pairs, failing over across the configured key pool.
+
+    If a key is rate-limited, out of quota, or otherwise erroring, the next key
+    in the pool is tried automatically. Only when every key has failed does the
+    call raise.
+    """
+    api_keys = _get_groq_api_keys()
+    if not api_keys:
+        raise Exception(
+            "No Groq API key configured. Set GROQ_API_KEY "
+            "(and optionally GROQ_API_KEY_2, GROQ_API_KEY_3, …)."
+        )
+
+    prompt = _build_clue_prompt(text, difficulty, num_questions, topic_hint)
+
+    # Start at a rotating offset, then fail over through the remaining keys.
+    start = next(_groq_key_cursor) % len(api_keys)
+    ordered_keys = [api_keys[(start + offset) % len(api_keys)] for offset in range(len(api_keys))]
+
+    last_error = None
+    for attempt, api_key in enumerate(ordered_keys, start=1):
+        try:
+            return _generate_clues_with_key(api_key, prompt)
+        except Exception as exc:
+            last_error = exc
+            logger.warning(
+                "Groq key %s (attempt %s/%s) failed: %s",
+                _mask_key(api_key), attempt, len(ordered_keys), exc,
+            )
+
+    raise Exception(
+        f"AI generation failed — all {len(ordered_keys)} Groq API key(s) were "
+        f"exhausted or unavailable. Last error: {last_error}"
+    )
+
+
+def _build_clue_prompt(text, difficulty, num_questions, topic_hint=None):
     topic_line = f"Focus on this topic if present: {topic_hint}" if topic_hint else ""
     requested_total = num_questions * 2
 
@@ -101,42 +250,48 @@ Text:
 {text[:4000]}
 """
 
+    return prompt
+
+
+def _strip_code_fence(raw):
+    raw = raw.strip()
+    if raw.startswith("```"):
+        raw = raw.split("```")[1]
+        if raw.startswith("json"):
+            raw = raw[4:]
+    return raw.strip()
+
+
+def _generate_clues_with_key(api_key, prompt):
+    """Run one generation attempt against a single Groq API key.
+
+    Raises on any failure so the caller can fail over to the next key.
+    """
+    client = Groq(api_key=api_key)
+
+    response = client.chat.completions.create(
+        model="llama-3.3-70b-versatile",
+        messages=[{"role": "user", "content": prompt}],
+        temperature=0.7,
+        max_tokens=1000,
+    )
+    raw = _strip_code_fence(response.choices[0].message.content)
+
     try:
+        return json.loads(raw)
+    except json.JSONDecodeError:
+        # Model returned prose instead of JSON — retry once on the same key at
+        # a lower temperature before giving up on it.
         response = client.chat.completions.create(
             model="llama-3.3-70b-versatile",
-            messages=[{"role": "user", "content": prompt}],
-            temperature=0.7,
+            messages=[
+                {"role": "user", "content": prompt},
+                {"role": "assistant", "content": "Here is the JSON array:"},
+            ],
+            temperature=0.3,
             max_tokens=1000,
         )
-        raw = response.choices[0].message.content.strip()
-
-        if raw.startswith("```"):
-            raw = raw.split("```")[1]
-            if raw.startswith("json"):
-                raw = raw[4:]
-        raw = raw.strip()
-
-        return json.loads(raw)
-
-    except json.JSONDecodeError:
-        try:
-            response = client.chat.completions.create(
-                model="llama-3.3-70b-versatile",
-                messages=[
-                    {"role": "user", "content": prompt},
-                    {"role": "assistant", "content": "Here is the JSON array:"},
-                ],
-                temperature=0.3,
-                max_tokens=1000,
-            )
-            raw = response.choices[0].message.content.strip()
-            if raw.startswith("```"):
-                raw = raw.split("```")[1]
-                if raw.startswith("json"):
-                    raw = raw[4:]
-            return json.loads(raw.strip())
-        except Exception as exc:
-            raise Exception(f"AI generation failed: {str(exc)}")
+        return json.loads(_strip_code_fence(response.choices[0].message.content))
 
 
 def _normalize_answer(raw_answer):
@@ -266,42 +421,68 @@ def _build_teacher_analytics(puzzles):
     }
 
 
+# ---------------------------------------------------------------------------
+# Views
+# ---------------------------------------------------------------------------
+
 @api_view(["GET"])
+@require_auth('Teacher', 'Student', 'Admin')
 def puzzle_list(request):
-    role = request.query_params.get("role", "Student")
+    # Role comes from the verified token — a client-supplied ?role= must never
+    # be able to unlock answers (ClueSerializer gates on this value).
+    role = _auth_role(request)
+
     if role == "Teacher":
+        puzzles = Puzzle.objects.filter(teacher__teacher_id=_auth_user_id(request))
+        puzzles = puzzles.order_by("-created_at")
+    elif role == "Admin":
         teacher_id = request.query_params.get("teacher_id")
         puzzles = Puzzle.objects.all()
         if teacher_id:
             puzzles = puzzles.filter(teacher__teacher_id=teacher_id)
         puzzles = puzzles.order_by("-created_at")
     else:
-        student_reg_no = request.query_params.get("student_reg_no")
-        if not student_reg_no:
-            return Response({"error": "student_reg_no is required"}, status=400)
+        # Students only ever see their own teacher's published puzzles.
         try:
-            student = Student.objects.get(reg_no=student_reg_no)
+            student = Student.objects.get(reg_no=_auth_user_id(request))
         except Student.DoesNotExist:
             return Response({"error": "Student not found"}, status=404)
         puzzles = Puzzle.objects.filter(status="published", teacher=student.teacher).order_by("-created_at")
+
     serializer = PuzzleSerializer(puzzles, many=True, context={"role": role})
     return Response(serializer.data)
 
 
 @api_view(["GET"])
+@require_auth('Teacher', 'Student', 'Admin')
 def puzzle_preview(request, puzzle_id):
-    role = request.query_params.get("role", "Teacher")
+    # Previously defaulted to "Teacher", leaking answers to every caller.
+    role = _auth_role(request)
     try:
         puzzle = Puzzle.objects.get(id=puzzle_id)
     except Puzzle.DoesNotExist:
         return Response({"error": "Puzzle not found"}, status=404)
+
+    if role == "Teacher" and not _owns(request, puzzle.teacher.teacher_id):
+        return _forbidden()
+    if role == "Student" and puzzle.status != "published":
+        return _forbidden("This puzzle is not available.")
+
     return Response(PuzzleSerializer(puzzle, context={"role": role}).data)
 
 
 @api_view(["GET"])
+@require_auth('Teacher', 'Student', 'Admin')
 def stats(request):
-    role = request.query_params.get("role", "Student")
-    puzzles = Puzzle.objects.all()
+    role = _auth_role(request)
+    if role == "Teacher":
+        # Scope analytics to the requesting teacher's own puzzles only
+        puzzles = Puzzle.objects.filter(teacher__teacher_id=_auth_user_id(request))
+    elif role == "Admin":
+        puzzles = Puzzle.objects.all()
+    else:
+        puzzles = Puzzle.objects.filter(status="published")
+
     total_puzzles = puzzles.count()
     avg_score = 0
     if total_puzzles > 0:
@@ -319,11 +500,14 @@ def stats(request):
 
 
 @api_view(["GET"])
+@require_auth('Teacher', 'Admin')
 def puzzle_analytics(request, puzzle_id):
     try:
         puzzle = Puzzle.objects.get(id=puzzle_id)
     except Puzzle.DoesNotExist:
         return Response({"error": "Puzzle not found"}, status=404)
+    if not _owns(request, puzzle.teacher.teacher_id):
+        return _forbidden()
     return Response(_build_puzzle_analytics_data(puzzle))
 
 
@@ -380,6 +564,7 @@ def _build_puzzle_analytics_data(puzzle):
 
 
 @api_view(["GET"])
+@require_auth('Teacher', 'Admin')
 def analytics(request):
     puzzle_id = request.query_params.get("puzzle_id")
     if not puzzle_id:
@@ -392,6 +577,7 @@ def analytics(request):
 
 
 @api_view(["POST"])
+@require_auth('Student')
 def submit_puzzle(request):
     payload = request.data.copy()
     logger.warning("submit_puzzle payload=%s", payload)
@@ -406,11 +592,16 @@ def submit_puzzle(request):
     if puzzle.status != "published":
         return Response({"error": "Puzzle is not available for submission"}, status=400)
 
-    student_reg_no = payload.get("student_reg_no")
+    # Students always submit as themselves — never trust a body-supplied
+    # reg_no, which would let one student submit (or burn the single allowed
+    # attempt) on a classmate's behalf.
+    if _auth_role(request) == "Student":
+        student_reg_no = _auth_user_id(request)
+        payload["student_reg_no"] = student_reg_no
+    else:
+        student_reg_no = payload.get("student_reg_no")
     if not student_reg_no:
         return Response({"error": "student_reg_no is required"}, status=400)
-    if student_reg_no and Attempt.objects.filter(student_reg_no=student_reg_no, puzzle=puzzle).exists():
-        return Response({"error": "Puzzle already submitted"}, status=400)
 
     clues = list(puzzle.clues.all())
     total_clues = len(clues)
@@ -444,49 +635,75 @@ def submit_puzzle(request):
     }
 
     serializer = AttemptSerializer(data=payload)
-    if serializer.is_valid():
+    if not serializer.is_valid():
+        logger.warning("submit_puzzle validation_error=%s", serializer.errors)
+        return Response(serializer.errors, status=400)
+
+    try:
         attempt = serializer.save()
-        _recalculate_puzzle_metrics(puzzle)
-        response = AttemptSerializer(attempt).data
-        response["rank"] = _get_rank_for_attempt(attempt)
-        response["total_words"] = total_clues
-        response["correct_words"] = correct_count
-        response["incorrect_words"] = total_clues - correct_count
-        logger.warning(
-            "submit_puzzle success attempt_id=%s puzzle_id=%s score=%s solved_words=%s",
-            attempt.id,
-            puzzle.id,
-            response["score"],
-            response["solved_words_count"],
-        )
-        return Response(response)
-    logger.warning("submit_puzzle validation_error=%s", serializer.errors)
-    return Response(serializer.errors, status=400)
+    except IntegrityError:
+        # unique_together (puzzle, student_reg_no) constraint fired — duplicate submission
+        return Response({"error": "Puzzle already submitted"}, status=400)
+
+    _recalculate_puzzle_metrics(puzzle)
+    response = AttemptSerializer(attempt).data
+    response["rank"] = _get_rank_for_attempt(attempt)
+    response["total_words"] = total_clues
+    response["correct_words"] = correct_count
+    response["incorrect_words"] = total_clues - correct_count
+    logger.warning(
+        "submit_puzzle success attempt_id=%s puzzle_id=%s score=%s solved_words=%s",
+        attempt.id,
+        puzzle.id,
+        response["score"],
+        response["solved_words_count"],
+    )
+    return Response(response)
 
 
 @api_view(["GET"])
+@require_auth('Teacher', 'Student', 'Admin')
 def leaderboard(request):
     attempts = Attempt.objects.order_by("-score", "completion_time", "submitted_at")[:50]
     return Response(_serialize_attempts_with_rank(attempts))
 
 
 @api_view(["GET"])
+@require_auth('Teacher', 'Student', 'Admin')
 def leaderboard_by_puzzle(request, puzzle_id):
     attempts = Attempt.objects.filter(puzzle_id=puzzle_id).order_by("-score", "completion_time", "submitted_at")[:50]
     return Response(_serialize_attempts_with_rank(attempts))
 
 
 @api_view(["GET"])
+@require_auth('Student', 'Teacher', 'Admin')
 def student_history(request):
-    reg_no = request.query_params.get("student_reg_no")
+    # A student may only read their own history; staff may look up others.
+    if _auth_role(request) == "Student":
+        reg_no = _auth_user_id(request)
+    else:
+        reg_no = request.query_params.get("student_reg_no")
     if not reg_no:
         return Response({"error": "student_reg_no is required"}, status=400)
 
     attempts = list(
         Attempt.objects.filter(student_reg_no=reg_no).order_by("-submitted_at")
     )
+
+    # Batch-load rankings to avoid an N+1 query (one query per unique puzzle)
+    puzzle_ids = list({a.puzzle_id for a in attempts})
+    puzzle_rank_maps = {}
+    for pid in puzzle_ids:
+        ordered_ids = list(
+            Attempt.objects.filter(puzzle_id=pid)
+            .order_by("-score", "completion_time", "submitted_at")
+            .values_list('id', flat=True)
+        )
+        puzzle_rank_maps[pid] = {aid: idx + 1 for idx, aid in enumerate(ordered_ids)}
+
     history = []
     for attempt in attempts:
+        rank = puzzle_rank_maps.get(attempt.puzzle_id, {}).get(attempt.id)
         history.append(
             {
                 "attempt_id": attempt.id,
@@ -497,13 +714,14 @@ def student_history(request):
                 "score": attempt.score,
                 "completion_time": attempt.completion_time,
                 "solved_words_count": attempt.solved_words_count,
-                "rank": _get_rank_for_attempt(attempt),
+                "rank": rank,
             }
         )
     return Response(history)
 
 
 @api_view(["POST"])
+@require_auth('Student', 'Teacher', 'Admin')
 def check_answer(request):
     data = request.data
     try:
@@ -545,6 +763,9 @@ def check_answer(request):
 
 
 @api_view(["POST"])
+# Students must never be able to reveal answers — this endpoint hands back the
+# solution, so it is restricted to staff even though the UI no longer calls it.
+@require_auth('Teacher', 'Admin')
 def reveal_hint(request):
     puzzle_id = request.data.get("puzzle")
     clue_id = request.data.get("clue_id")
@@ -562,6 +783,28 @@ def reveal_hint(request):
     return Response({"letter": clue.answer.upper()[index]})
 
 
+LOGIN_MAX_ATTEMPTS = int(os.environ.get('LOGIN_MAX_ATTEMPTS', '8'))
+LOGIN_LOCKOUT_SECONDS = int(os.environ.get('LOGIN_LOCKOUT_SECONDS', '900'))
+
+
+def _client_ip(request):
+    forwarded = request.META.get('HTTP_X_FORWARDED_FOR', '')
+    if forwarded:
+        return forwarded.split(',')[0].strip()
+    return request.META.get('REMOTE_ADDR', '')
+
+
+def _throttle_key(request, user_id):
+    return f"login-fail:{_client_ip(request)}:{(user_id or '').lower()}"
+
+
+def _register_failed_login(request, user_id):
+    key = _throttle_key(request, user_id)
+    count = cache.get(key, 0) + 1
+    cache.set(key, count, LOGIN_LOCKOUT_SECONDS)
+    return count
+
+
 @api_view(["POST"])
 def login(request):
     role = request.data.get("role")
@@ -570,36 +813,58 @@ def login(request):
     if not role or not user_id or not password:
         return Response({"error": "role, user_id and password are required"}, status=400)
 
+    # Rate-limit repeated failures so student passwords can't be brute-forced.
+    if cache.get(_throttle_key(request, user_id), 0) >= LOGIN_MAX_ATTEMPTS:
+        return Response(
+            {"error": "Too many failed attempts. Please try again later."},
+            status=429,
+        )
+
+    def invalid():
+        _register_failed_login(request, user_id)
+        return Response({"error": "Invalid credentials"}, status=401)
+
+    def succeed(payload):
+        cache.delete(_throttle_key(request, user_id))
+        return Response(payload)
+
     if role == "Admin":
         user = authenticate(username=user_id, password=password)
         if not user or not user.is_superuser:
-            return Response({"error": "Invalid credentials"}, status=401)
+            return invalid()
         name = user.get_full_name() or user.username
-        return Response({"role": "Admin", "user_id": user.username, "name": name})
+        token = AuthToken.create_for("Admin", user.username)
+        return succeed({"role": "Admin", "user_id": user.username, "name": name, "token": token.token})
 
     if role == "Teacher":
         try:
             teacher = Teacher.objects.get(teacher_id__iexact=user_id)
         except Teacher.DoesNotExist:
-            return Response({"error": "Invalid credentials"}, status=401)
-        if teacher.password != password:
-            return Response({"error": "Invalid credentials"}, status=401)
-        return Response({"role": "Teacher", "user_id": teacher.teacher_id, "name": teacher.name})
+            return invalid()
+        if not check_password(password, teacher.password):
+            return invalid()
+        token = AuthToken.create_for("Teacher", teacher.teacher_id)
+        return succeed({"role": "Teacher", "user_id": teacher.teacher_id, "name": teacher.name, "token": token.token})
 
     if role == "Student":
         try:
             student = Student.objects.get(reg_no__iexact=user_id)
         except Student.DoesNotExist:
-            return Response({"error": "Invalid credentials"}, status=401)
-        if student.password != password:
-            if student.password.endswith("\\") and student.password.rstrip("\\") == password:
-                student.password = student.password.rstrip("\\")
-                student.save(update_fields=["password"])
-            else:
-                return Response({"error": "Invalid credentials"}, status=401)
-        return Response({"role": "Student", "user_id": student.reg_no, "name": student.name})
+            return invalid()
+        if not check_password(password, student.password):
+            return invalid()
+        token = AuthToken.create_for("Student", student.reg_no)
+        return succeed({"role": "Student", "user_id": student.reg_no, "name": student.name, "token": token.token})
 
     return Response({"error": "Invalid role"}, status=400)
+
+
+@api_view(["POST"])
+@require_auth('Teacher', 'Student', 'Admin')
+def logout(request):
+    """Invalidate the caller's token server-side."""
+    request.auth.delete()
+    return Response({"ok": True})
 
 
 def _regenerate_layout(puzzle):
@@ -630,10 +895,12 @@ def _regenerate_layout(puzzle):
 
 
 @api_view(["POST"])
+@require_auth('Teacher', 'Admin')
 def create_puzzle(request):
     logger.warning("create_puzzle payload=%s", request.data)
     title = (request.data.get("title") or "").strip()
-    teacher_id = request.data.get("teacher_id")
+    # Teachers always create under their own account.
+    teacher_id = request.data.get("teacher_id") if _is_admin(request) else _auth_user_id(request)
     validation_mode = request.data.get("validation_mode") or "on_submit"
     if not title:
         return Response({"error": "title is required"}, status=400)
@@ -658,15 +925,23 @@ def create_puzzle(request):
 
 @api_view(["POST"])
 @parser_classes([MultiPartParser, FormParser])
+@require_auth('Teacher', 'Admin')
 def generate_from_document(request):
-    api_key = os.environ.get("GROQ_API_KEY")
-    if not api_key:
+    if not _get_groq_api_keys():
         return Response(
-            {"error": "Groq API key not configured. Set GROQ_API_KEY environment variable."},
+            {
+                "error": "Groq API key not configured. Set GROQ_API_KEY "
+                         "(and optionally GROQ_API_KEY_2, GROQ_API_KEY_3, …)."
+            },
             status=500,
         )
 
-    teacher_id = (request.data.get("teacher_id") or "").strip()
+    # Generated puzzles always belong to the requesting teacher.
+    teacher_id = (
+        (request.data.get("teacher_id") or "").strip()
+        if _is_admin(request)
+        else _auth_user_id(request)
+    )
     puzzle_title = (request.data.get("puzzle_title") or "").strip()
     difficulty = (request.data.get("difficulty") or "medium").lower()
     num_questions = int(request.data.get("num_questions") or 0)
@@ -780,6 +1055,7 @@ def generate_from_document(request):
 
 
 @api_view(["POST"])
+@require_auth('Teacher', 'Admin')
 def add_clues(request):
     logger.warning("add_clues payload=%s", request.data)
     puzzle_id = request.data.get("puzzle_id")
@@ -793,6 +1069,9 @@ def add_clues(request):
         puzzle = Puzzle.objects.get(id=puzzle_id)
     except Puzzle.DoesNotExist:
         return Response({"error": "Puzzle not found"}, status=404)
+
+    if not _owns(request, puzzle.teacher.teacher_id):
+        return _forbidden()
 
     if puzzle.status == "archived":
         return Response({"error": "Archived puzzles cannot be edited"}, status=400)
@@ -850,11 +1129,14 @@ def add_clues(request):
 
 
 @api_view(["POST"])
+@require_auth('Teacher', 'Admin')
 def update_clue(request, clue_id):
     try:
         clue = Clue.objects.get(id=clue_id)
     except Clue.DoesNotExist:
         return Response({"error": "Clue not found"}, status=404)
+    if not _owns(request, clue.puzzle.teacher.teacher_id):
+        return _forbidden()
 
     puzzle = clue.puzzle
     if puzzle.status == "archived":
@@ -884,11 +1166,14 @@ def update_clue(request, clue_id):
 
 
 @api_view(["DELETE"])
+@require_auth('Teacher', 'Admin')
 def delete_clue(request, clue_id):
     try:
         clue = Clue.objects.get(id=clue_id)
     except Clue.DoesNotExist:
         return Response({"error": "Clue not found"}, status=404)
+    if not _owns(request, clue.puzzle.teacher.teacher_id):
+        return _forbidden()
 
     puzzle = clue.puzzle
     if puzzle.status == "archived":
@@ -906,11 +1191,14 @@ def delete_clue(request, clue_id):
 
 
 @api_view(["POST"])
+@require_auth('Teacher', 'Admin')
 def regenerate_layout(request, puzzle_id):
     try:
         puzzle = Puzzle.objects.get(id=puzzle_id)
     except Puzzle.DoesNotExist:
         return Response({"error": "Puzzle not found"}, status=404)
+    if not _owns(request, puzzle.teacher.teacher_id):
+        return _forbidden()
 
     if puzzle.clues.count() == 0:
         return Response({"error": "No clues to generate layout"}, status=400)
@@ -922,6 +1210,7 @@ def regenerate_layout(request, puzzle_id):
 
 
 @api_view(["POST"])
+@require_auth('Teacher', 'Admin')
 def publish_puzzle(request):
     logger.warning("publish_puzzle payload=%s", request.data)
     puzzle_id = request.data.get("puzzle_id")
@@ -929,6 +1218,8 @@ def publish_puzzle(request):
         puzzle = Puzzle.objects.get(id=puzzle_id)
     except Puzzle.DoesNotExist:
         return Response({"error": "Puzzle not found"}, status=404)
+    if not _owns(request, puzzle.teacher.teacher_id):
+        return _forbidden()
 
     if puzzle.clues.count() == 0:
         return Response({"error": "Add at least one clue before publishing"}, status=400)
@@ -950,22 +1241,28 @@ def publish_puzzle(request):
 
 
 @api_view(["POST"])
+@require_auth('Teacher', 'Admin')
 def archive_puzzle(request, puzzle_id):
     try:
         puzzle = Puzzle.objects.get(id=puzzle_id)
     except Puzzle.DoesNotExist:
         return Response({"error": "Puzzle not found"}, status=404)
+    if not _owns(request, puzzle.teacher.teacher_id):
+        return _forbidden()
     puzzle.status = "archived"
     puzzle.save(update_fields=["status"])
     return Response({"ok": True, "status": puzzle.status})
 
 
 @api_view(["DELETE"])
+@require_auth('Teacher', 'Admin')
 def delete_puzzle(request, puzzle_id):
     try:
         puzzle = Puzzle.objects.get(id=puzzle_id)
     except Puzzle.DoesNotExist:
         return Response({"error": "Puzzle not found"}, status=404)
+    if not _owns(request, puzzle.teacher.teacher_id):
+        return _forbidden()
 
     if puzzle.status == "published":
         return Response({"error": "Published puzzles cannot be deleted"}, status=400)
@@ -977,48 +1274,201 @@ def delete_puzzle(request, puzzle_id):
     return Response({"ok": True})
 
 
-@api_view(["GET"])
-def printable_export(request, puzzle_id):
-    try:
-        puzzle = Puzzle.objects.get(id=puzzle_id)
-    except Puzzle.DoesNotExist:
-        return Response({"error": "Puzzle not found"}, status=404)
+def _safe_filename(title, extension):
+    """Turn a puzzle title into a safe download filename."""
+    stem = re.sub(r"[^A-Za-z0-9]+", "_", str(title or "puzzle")).strip("_") or "puzzle"
+    return f"{stem[:60]}.{extension}"
 
-    data = PuzzleSerializer(puzzle, context={"role": "Teacher"}).data
-    across = data.get("across", [])
-    down = data.get("down", [])
+
+def _build_printable_html(title, cells, across, down):
+    """Test-paper HTML — used for both browser preview and the Word export."""
     rows = []
-    for row in data.get("cells", []):
+    for row in cells:
         tds = []
         for cell in row:
             if not cell:
                 tds.append("<td style='width:24px;height:24px;background:#000;'></td>")
             else:
-                num = cell.get("number") or ""
+                num = escape(str(cell.get("number") or ""))
                 tds.append(
-                    "<td style='width:24px;height:24px;border:1px solid #555;position:relative;'>"
+                    "<td style='width:24px;height:24px;border:1px solid #555;"
+                    "position:relative;background:#fff;'>"
                     f"<small style='position:absolute;top:0;left:2px;font-size:9px'>{num}</small>"
                     "</td>"
                 )
         rows.append("<tr>" + "".join(tds) + "</tr>")
 
-    across_items = "".join(
-        f"<li>{c['number']}. {c['clue']} ({c['length']})</li>" for c in across
-    )
-    down_items = "".join(
-        f"<li>{c['number']}. {c['clue']} ({c['length']})</li>" for c in down
-    )
+    def items(clues):
+        return "".join(
+            f"<li>{escape(str(c['number']))}. {escape(str(c['clue']))} "
+            f"({escape(str(c['length']))})</li>"
+            for c in clues
+        )
 
-    html = f"""
-    <html><body>
-    <h2>{puzzle.title}</h2>
+    return f"""<html><head><meta charset="utf-8"><title>{escape(title)}</title></head>
+    <body style="font-family:Georgia,serif;color:#000;">
+    <h2 style="margin-bottom:4px;">{escape(title)}</h2>
+    <p style="font-size:12px;margin-top:0;">
+      Name: ______________________ &nbsp;&nbsp;
+      Reg No: ________________ &nbsp;&nbsp;
+      Date: ____________
+    </p>
+    <hr>
     <table style='border-collapse:collapse'>{''.join(rows)}</table>
     <h3>Across</h3>
-    <ul>{across_items}</ul>
+    <ul>{items(across)}</ul>
     <h3>Down</h3>
-    <ul>{down_items}</ul>
+    <ul>{items(down)}</ul>
     </body></html>
     """
+
+
+def _build_printable_pdf(title, cells, across, down):
+    """Render the puzzle as a print-ready PDF test paper (returns bytes)."""
+    from reportlab.lib.pagesizes import A4
+    from reportlab.lib.units import mm
+    from reportlab.pdfbase.pdfmetrics import stringWidth
+    from reportlab.pdfgen import canvas
+
+    buffer = io.BytesIO()
+    width, height = A4
+    margin = 18 * mm
+    pdf = canvas.Canvas(buffer, pagesize=A4)
+    pdf.setTitle(title)
+
+    y = height - margin
+    pdf.setFont("Helvetica-Bold", 18)
+    pdf.drawString(margin, y, title[:60])
+    y -= 9 * mm
+
+    pdf.setFont("Helvetica", 10)
+    pdf.drawString(margin, y, "Name: __________________    Reg No: ______________    Date: ____________")
+    y -= 4 * mm
+    pdf.setStrokeGray(0.6)
+    pdf.line(margin, y, width - margin, y)
+    y -= 8 * mm
+
+    # ── Grid ────────────────────────────────────────────────
+    row_count = len(cells)
+    col_count = max((len(r) for r in cells), default=0)
+    if row_count and col_count:
+        cell_size = min(9 * mm, (width - 2 * margin) / col_count)
+        top = y
+        for r_index, row in enumerate(cells):
+            for c_index in range(col_count):
+                cell = row[c_index] if c_index < len(row) else None
+                x = margin + c_index * cell_size
+                cell_y = top - (r_index + 1) * cell_size
+                if not cell:
+                    pdf.setFillGray(0)
+                    pdf.rect(x, cell_y, cell_size, cell_size, stroke=0, fill=1)
+                    continue
+                pdf.setFillGray(1)
+                pdf.setStrokeGray(0.25)
+                pdf.rect(x, cell_y, cell_size, cell_size, stroke=1, fill=1)
+                number = cell.get("number")
+                if number:
+                    pdf.setFillGray(0)
+                    pdf.setFont("Helvetica", 4.5)
+                    pdf.drawString(x + 0.7 * mm, cell_y + cell_size - 2.3 * mm, str(number))
+        y = top - row_count * cell_size - 10 * mm
+
+    # ── Clue lists (wrapped, with page breaks) ───────────────
+    text_width = width - 2 * margin
+    pdf.setFillGray(0)
+
+    def new_page():
+        pdf.showPage()
+        pdf.setFillGray(0)
+        return height - margin
+
+    def draw_section(heading, clues, cursor):
+        if cursor < margin + 20 * mm:
+            cursor = new_page()
+        pdf.setFont("Helvetica-Bold", 12)
+        pdf.drawString(margin, cursor, heading)
+        cursor -= 6 * mm
+
+        pdf.setFont("Helvetica", 10)
+        for clue in clues:
+            label = f"{clue['number']}. {clue['clue']} ({clue['length']})"
+            words = label.split()
+            line = ""
+            for word in words:
+                candidate = f"{line} {word}".strip()
+                if stringWidth(candidate, "Helvetica", 10) > text_width:
+                    if cursor < margin:
+                        cursor = new_page()
+                        pdf.setFont("Helvetica", 10)
+                    pdf.drawString(margin, cursor, line)
+                    cursor -= 5 * mm
+                    line = word
+                else:
+                    line = candidate
+            if line:
+                if cursor < margin:
+                    cursor = new_page()
+                    pdf.setFont("Helvetica", 10)
+                pdf.drawString(margin, cursor, line)
+                cursor -= 5 * mm
+        return cursor - 3 * mm
+
+    y = draw_section("Across", across, y)
+    draw_section("Down", down, y)
+
+    pdf.save()
+    return buffer.getvalue()
+
+
+@api_view(["GET"])
+@require_auth('Teacher', 'Admin')
+def printable_export(request, puzzle_id):
+    """Printable puzzle. ?fmt=html (view, default) | doc | pdf (downloads).
+
+    Note: the parameter is ``fmt``, not ``format`` — DRF reserves ``format``
+    for content negotiation and would 404 on unknown values.
+    """
+    try:
+        puzzle = Puzzle.objects.get(id=puzzle_id)
+    except Puzzle.DoesNotExist:
+        return Response({"error": "Puzzle not found"}, status=404)
+    if not _owns(request, puzzle.teacher.teacher_id):
+        return _forbidden()
+
+    export_format = (request.query_params.get("fmt") or "html").lower()
+    if export_format not in {"html", "doc", "pdf"}:
+        return Response({"error": "fmt must be one of: html, doc, pdf"}, status=400)
+
+    data = PuzzleSerializer(puzzle, context={"role": "Teacher"}).data
+    cells = data.get("cells", [])
+    across = data.get("across", [])
+    down = data.get("down", [])
+
+    if export_format == "pdf":
+        try:
+            pdf_bytes = _build_printable_pdf(puzzle.title, cells, across, down)
+        except ImportError:
+            return Response(
+                {"error": "PDF export unavailable — the reportlab package is not installed."},
+                status=500,
+            )
+        response = HttpResponse(pdf_bytes, content_type="application/pdf")
+        response["Content-Disposition"] = (
+            f'attachment; filename="{_safe_filename(puzzle.title, "pdf")}"'
+        )
+        return response
+
+    html = _build_printable_html(puzzle.title, cells, across, down)
+
+    if export_format == "doc":
+        # Word opens HTML saved with a .doc extension, so no extra dependency
+        # is needed to produce an editable document.
+        response = HttpResponse(html, content_type="application/msword")
+        response["Content-Disposition"] = (
+            f'attachment; filename="{_safe_filename(puzzle.title, "doc")}"'
+        )
+        return response
+
     return HttpResponse(html, content_type="text/html")
 
 
@@ -1042,6 +1492,7 @@ def _serialize_student(student):
 
 
 @api_view(["GET", "POST"])
+@require_auth('Admin')
 def admin_teachers(request):
     if request.method == "GET":
         teachers = Teacher.objects.all().order_by("teacher_id")
@@ -1054,11 +1505,16 @@ def admin_teachers(request):
         return Response({"error": "teacher_id and password are required"}, status=400)
     if Teacher.objects.filter(teacher_id=teacher_id).exists():
         return Response({"error": "Teacher ID already exists"}, status=400)
-    teacher = Teacher.objects.create(teacher_id=teacher_id, name=name, password=password)
+    teacher = Teacher.objects.create(
+        teacher_id=teacher_id,
+        name=name,
+        password=make_password(password),
+    )
     return Response(_serialize_teacher(teacher), status=201)
 
 
 @api_view(["DELETE"])
+@require_auth('Admin')
 def admin_teacher_detail(request, teacher_id):
     try:
         teacher = Teacher.objects.get(teacher_id=teacher_id)
@@ -1069,6 +1525,7 @@ def admin_teacher_detail(request, teacher_id):
 
 
 @api_view(["GET"])
+@require_auth('Admin')
 def admin_students(request):
     teacher_id = request.query_params.get("teacher_id")
     students = Student.objects.all()
@@ -1079,8 +1536,13 @@ def admin_students(request):
 
 
 @api_view(["GET"])
+@require_auth('Teacher', 'Admin')
 def teacher_students(request):
-    teacher_id = request.query_params.get("teacher_id")
+    # Teachers always see their own roster; only Admin may query another's.
+    if _is_admin(request):
+        teacher_id = request.query_params.get("teacher_id")
+    else:
+        teacher_id = _auth_user_id(request)
     if not teacher_id:
         return Response({"error": "teacher_id is required"}, status=400)
     students = Student.objects.filter(teacher__teacher_id=teacher_id).order_by("reg_no")
@@ -1089,8 +1551,10 @@ def teacher_students(request):
 
 @api_view(["POST"])
 @parser_classes([MultiPartParser, FormParser])
+@require_auth('Teacher', 'Admin')
 def upload_students_csv(request):
-    teacher_id = request.data.get("teacher_id")
+    # A teacher can only import into their own roster.
+    teacher_id = request.data.get("teacher_id") if _is_admin(request) else _auth_user_id(request)
     if not teacher_id:
         return Response({"error": "teacher_id is required"}, status=400)
     try:
@@ -1133,13 +1597,19 @@ def upload_students_csv(request):
             errors.append({"row": idx, "error": f"Duplicate reg_no: {reg_no}"})
             skipped += 1
             continue
-        Student.objects.create(name=name or "Student", reg_no=reg_no, password=password, teacher=teacher)
+        Student.objects.create(
+            name=name or "Student",
+            reg_no=reg_no,
+            password=make_password(password),
+            teacher=teacher,
+        )
         created += 1
 
     return Response({"created": created, "skipped": skipped, "errors": errors})
 
 
 @api_view(["POST"])
+@require_auth('Teacher', 'Admin')
 def reset_student_password(request, student_id):
     new_password = (request.data.get("password") or "").strip()
     if not new_password:
@@ -1148,16 +1618,21 @@ def reset_student_password(request, student_id):
         student = Student.objects.get(id=student_id)
     except Student.DoesNotExist:
         return Response({"error": "Student not found"}, status=404)
-    student.password = new_password
+    if not _owns(request, student.teacher.teacher_id if student.teacher else None):
+        return _forbidden()
+    student.password = make_password(new_password)
     student.save(update_fields=["password"])
     return Response({"ok": True})
 
 
 @api_view(["DELETE"])
+@require_auth('Teacher', 'Admin')
 def delete_student(request, student_id):
     try:
         student = Student.objects.get(id=student_id)
     except Student.DoesNotExist:
         return Response({"error": "Student not found"}, status=404)
+    if not _owns(request, student.teacher.teacher_id if student.teacher else None):
+        return _forbidden()
     student.delete()
     return Response({"ok": True})

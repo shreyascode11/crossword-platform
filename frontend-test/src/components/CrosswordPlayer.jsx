@@ -1,6 +1,8 @@
+'use client';
+
 import React, { memo, useEffect, useMemo, useRef, useState } from 'react';
 import { Clock, ChevronLeft, CheckCircle, HelpCircle } from 'lucide-react';
-import { checkAnswer, fetchStudentHistory, revealHint, submitPuzzle } from '../api';
+import { checkAnswer, fetchStudentHistory, submitPuzzle } from '../lib/api';
 
 const keyForCell = (row, col) => `${row}:${col}`;
 
@@ -20,15 +22,22 @@ const GridCell = memo(function GridCell({
     return <div className="bg-[#070606] rounded-lg border border-white/[0.04]" style={sizeStyle} />;
   }
 
+  // Solid tints (not translucent) so colours stay vivid on the near-black board
+  // and keep enough contrast for the black letters.
   let bgClass =
     'bg-[#f3f0ea] border border-stone-300/55 shadow-[inset_0_1px_0_rgba(255,255,255,0.65)]';
-  if (validationState === 'correct') bgClass = 'bg-emerald-300/45 border border-emerald-600/40 shadow-none';
-  if (validationState === 'incorrect') bgClass = 'bg-rose-300/50 border border-rose-600/40 shadow-none';
-  if (isCrossingWord) bgClass = 'bg-amber-200/55 border border-amber-600/35 shadow-none';
-  if (isActiveWord) bgClass = 'bg-sky-200/55 border border-sky-600/35 shadow-none';
+  if (validationState === 'correct')
+    bgClass = 'bg-[#8ff0c4] border border-[#12b981] shadow-none';
+  if (validationState === 'incorrect')
+    bgClass = 'bg-[#ffb3c1] border border-[#ff3860] shadow-none';
+  if (isCrossingWord)
+    bgClass = 'bg-[#b5efe9] border border-[#22d3c9] shadow-none';
+  if (isActiveWord)
+    bgClass =
+      'bg-[#d9caff] border border-[#7c5cff] shadow-[inset_0_0_0_1px_rgba(124,92,255,0.25)]';
   if (isActiveCell)
     bgClass =
-      'bg-[#fff8e7] border-2 border-[#e63946] shadow-[0_0_0_3px_rgba(230,57,70,0.25),0_8px_24px_-12px_rgba(230,57,70,0.35)] z-[1]';
+      'bg-white border-2 border-[#7c5cff] shadow-[0_0_0_3px_rgba(124,92,255,0.35),0_8px_24px_-10px_rgba(124,92,255,0.55)] z-[1]';
 
   return (
     <button
@@ -65,8 +74,11 @@ const CrosswordPlayer = ({
   const [submitMessage, setSubmitMessage] = useState('');
   const [actionError, setActionError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [hintLettersUsed, setHintLettersUsed] = useState(0);
-  const [hintWordsUsed, setHintWordsUsed] = useState(0);
+  // Hints were removed from the student experience — a self-revealing puzzle
+  // defeats the point of an assessment. These stay at zero so submissions keep
+  // the same shape (the backend still scores hint_* fields).
+  const hintLettersUsed = 0;
+  const hintWordsUsed = 0;
   const [submitResult, setSubmitResult] = useState(null);
   const [existingAttempt, setExistingAttempt] = useState(null);
   const [activeCell, setActiveCell] = useState(null);
@@ -74,6 +86,7 @@ const CrosswordPlayer = ({
   const [activeClueId, setActiveClueId] = useState(null);
   const [pageVisible, setPageVisible] = useState(true);
   const boardRef = useRef(null);
+  const boardWrapRef = useRef(null);
   const lastPuzzleIdRef = useRef(null);
 
   const puzzleClues = useMemo(
@@ -176,10 +189,38 @@ const CrosswordPlayer = ({
     };
   }, [gridCells]);
 
+  // Track the board panel so the grid can be scaled to always fit inside it.
+  const [boardBox, setBoardBox] = useState({ width: 0, height: 0 });
+
+  useEffect(() => {
+    const el = boardWrapRef.current;
+    if (!el || typeof ResizeObserver === 'undefined') return undefined;
+    const observer = new ResizeObserver(([entry]) => {
+      const { width, height } = entry.contentRect;
+      setBoardBox({ width, height });
+    });
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
+
+  // Size cells to the space actually available so the board never overflows
+  // (which previously clipped the bottom row) and stays centred.
   const cellSize = useMemo(() => {
-    const maxDim = Math.max(gridBounds.rows, gridBounds.cols);
-    return maxDim <= 12 ? 40 : 36;
-  }, [gridBounds]);
+    const { rows, cols } = gridBounds;
+    const GAP = 4;          // gap-1 between cells
+    const CHROME = 26;      // board padding (p-3) + border
+    const fallback = Math.max(rows, cols) <= 12 ? 40 : 36;
+
+    if (!boardBox.width || !boardBox.height || !rows || !cols) return fallback;
+
+    const byWidth = (boardBox.width - CHROME - GAP * (cols - 1)) / cols;
+    const byHeight = (boardBox.height - CHROME - GAP * (rows - 1)) / rows;
+    const fitted = Math.floor(Math.min(byWidth, byHeight));
+
+    // Never shrink below a usable tap/read size — on very short viewports the
+    // board panel scrolls instead (it is overflow-auto).
+    return Math.max(28, Math.min(44, fitted));
+  }, [gridBounds, boardBox]);
 
   useEffect(() => {
     if (!selectedPuzzle) return;
@@ -283,8 +324,6 @@ const CrosswordPlayer = ({
       setActiveClueId(null);
       setElapsedSeconds(0);
       setIsSubmitted(false);
-      setHintLettersUsed(0);
-      setHintWordsUsed(0);
       setSubmitResult(null);
       setExistingAttempt(null);
       lastPuzzleIdRef.current = null;
@@ -305,8 +344,6 @@ const CrosswordPlayer = ({
     setActionError('');
     setElapsedSeconds(0);
     setIsSubmitted(false);
-    setHintLettersUsed(0);
-    setHintWordsUsed(0);
     setSubmitResult(null);
     setExistingAttempt(null);
 
@@ -658,44 +695,6 @@ const CrosswordPlayer = ({
     boardRef.current?.focus();
   };
 
-  const handleRevealLetter = async () => {
-    if (!selectedPuzzle || !activeClueId || !activeCell) return;
-    const cells = wordCellsByClue[activeClueId] || [];
-    const idx = cells.findIndex((c) => c.row === activeCell.row && c.col === activeCell.col);
-    if (idx < 0) return;
-    try {
-      const data = await revealHint({
-        puzzle: selectedPuzzle.id,
-        clue_id: activeClueId,
-        hint_type: 'letter',
-        index: idx,
-      });
-      if (data?.letter) {
-        updateCellChar(activeCell.row, activeCell.col, data.letter);
-        setHintLettersUsed((prev) => prev + 1);
-      }
-    } catch (error) {
-      console.error("Reveal letter failed", error);
-    }
-  };
-
-  const handleRevealWord = async () => {
-    if (!selectedPuzzle || !activeClueId) return;
-    try {
-      const data = await revealHint({
-        puzzle: selectedPuzzle.id,
-        clue_id: activeClueId,
-        hint_type: 'word',
-      });
-      if (data?.word) {
-        setWordFromInput(activeClueId, data.word);
-        setHintWordsUsed((prev) => prev + 1);
-      }
-    } catch (error) {
-      console.error("Reveal word failed", error);
-    }
-  };
-
   return (
     <div className="w-full max-w-6xl font-sans text-white flex flex-col h-[calc(100vh-120px)]">
       <div className="flex flex-col gap-4 lg:flex-row lg:justify-between lg:items-center mb-6 bg-gradient-to-r from-[#141212] via-[#101010] to-[#0c0a0a] p-4 sm:p-5 rounded-2xl border border-white/[0.07] shadow-[0_20px_50px_-28px_rgba(0,0,0,0.85)]">
@@ -715,41 +714,18 @@ const CrosswordPlayer = ({
         </div>
 
         <div className="flex flex-wrap items-center gap-3 w-full lg:w-auto lg:justify-end">
-          <div className="flex items-center gap-3 px-5 py-2.5 rounded-2xl font-bold text-2xl tabular-nums tracking-tight border bg-[#080808] text-white border-[#e63946]/35 shadow-[0_0_0_1px_rgba(230,57,70,0.12),inset_0_1px_0_rgba(255,255,255,0.04),0_12px_40px_-18px_rgba(230,57,70,0.35)]">
-            <Clock size={22} className="text-[#e63946]" />
+          <div className="flex items-center gap-3 px-5 py-2.5 rounded-2xl font-bold text-2xl tabular-nums tracking-tight border bg-[#080808] text-white border-[#ff3860]/35 shadow-[0_0_0_1px_rgba(255,56,96,0.12),inset_0_1px_0_rgba(255,255,255,0.04),0_12px_40px_-18px_rgba(255,56,96,0.35)]">
+            <Clock size={22} className="text-[#ff3860]" />
             {formatTime(elapsedSeconds)}
           </div>
 
           <button
             onClick={handleSubmit}
             disabled={!selectedPuzzle || isSubmitting || isLocked}
-            className="flex items-center gap-2 bg-gradient-to-r from-[#e63946] to-[#c62f3a] hover:brightness-110 text-white px-7 py-3 rounded-xl font-bold text-sm uppercase tracking-wide transition-all shadow-[0_14px_40px_-14px_rgba(230,57,70,0.75)] border border-white/10 disabled:opacity-50 disabled:hover:brightness-100"
+            className="flex items-center gap-2 bg-gradient-to-r from-[#ff3860] to-[#e0294f] hover:brightness-110 text-white px-7 py-3 rounded-xl font-bold text-sm uppercase tracking-wide transition-all shadow-[0_14px_40px_-14px_rgba(255,56,96,0.75)] border border-white/10 disabled:opacity-50 disabled:hover:brightness-100"
           >
             <CheckCircle size={18} /> {isSubmitting ? 'Submitting...' : 'Submit Grid'}
           </button>
-        </div>
-      </div>
-
-      <div className="mb-4 bg-[#0c0a0a]/90 p-3 sm:p-4 rounded-2xl border border-white/[0.06] flex flex-wrap gap-2 items-center shadow-inner">
-        <button
-          type="button"
-          onClick={handleRevealLetter}
-          className="bg-white/[0.05] px-4 py-2 rounded-xl text-xs font-semibold text-gray-100 border border-white/10 hover:bg-[#e63946]/15 hover:border-[#e63946]/35 hover:text-white"
-          disabled={!activeClueId || isLocked}
-        >
-          Reveal Letter
-        </button>
-        <button
-          type="button"
-          onClick={handleRevealWord}
-          className="bg-white/[0.05] px-4 py-2 rounded-xl text-xs font-semibold text-gray-100 border border-white/10 hover:bg-[#e63946]/15 hover:border-[#e63946]/35 hover:text-white"
-          disabled={!activeClueId || isLocked}
-        >
-          Reveal Word
-        </button>
-        <div className="text-[11px] text-gray-500 self-center ml-auto font-medium">
-          Hints used: <span className="text-gray-300">{hintLettersUsed}</span> letters,{' '}
-          <span className="text-gray-300">{hintWordsUsed}</span> words
         </div>
       </div>
 
@@ -760,7 +736,7 @@ const CrosswordPlayer = ({
           onChange={(e) => setStudentRegNo(e.target.value)}
           placeholder="Student Registration Number"
           disabled={isLocked}
-          className="w-full bg-[#080808] border border-white/[0.08] rounded-xl p-3.5 text-white text-sm placeholder:text-gray-600 focus:outline-none focus:ring-2 focus:ring-[#e63946]/25 focus:border-[#e63946]/45"
+          className="w-full bg-[#080808] border border-white/[0.08] rounded-xl p-3.5 text-white text-sm placeholder:text-gray-600 focus:outline-none focus:ring-2 focus:ring-[#ff3860]/25 focus:border-[#ff3860]/45"
         />
       </div>
 
@@ -786,7 +762,7 @@ const CrosswordPlayer = ({
         <div className="flex-1 flex items-center justify-center bg-[#080808] rounded-3xl border border-white/[0.06] p-8 shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]">
           <div className="max-w-xl w-full bg-gradient-to-br from-[#141212] to-[#0c0a0a] rounded-2xl p-8 border border-white/[0.08] text-center shadow-[0_24px_60px_-30px_rgba(0,0,0,0.85)]">
             <h3 className="text-2xl font-bold text-white mb-2 tracking-tight">
-              Puzzle <span className="text-[#e63946]">Submitted</span>
+              Puzzle <span className="text-[#ff3860]">Submitted</span>
             </h3>
             <p className="text-gray-500 text-sm mb-5 leading-relaxed">
               This puzzle is locked. Your result is shown below.
@@ -801,13 +777,18 @@ const CrosswordPlayer = ({
         </div>
       ) : (
         <div className="flex flex-col lg:flex-row gap-8 flex-1 min-h-0">
-          <div className="flex-1 flex items-center justify-center bg-[#080808] rounded-3xl border border-white/[0.06] p-6 sm:p-8 shadow-[inset_0_1px_0_rgba(255,255,255,0.03)] overflow-hidden">
+          <div
+            ref={boardWrapRef}
+            className="flex-1 flex items-center justify-center bg-[#080808] rounded-3xl border border-white/[0.06] p-4 sm:p-6 shadow-[inset_0_1px_0_rgba(255,255,255,0.03)] overflow-auto"
+          >
             <div
               ref={boardRef}
               role="application"
               tabIndex={0}
               onKeyDown={handleKeyDown}
-              className="grid gap-1 w-full max-w-[640px] bg-zinc-900/90 p-3 rounded-2xl outline-none border border-white/[0.08] shadow-[0_20px_50px_-28px_rgba(0,0,0,0.9)] focus:ring-2 focus:ring-[#e63946]/30"
+              /* w-fit keeps the board hugging its fixed-size columns so it stays
+                 centred; a stretched box would left-align the cells inside it. */
+              className="grid gap-1 w-fit max-w-full mx-auto justify-center content-center bg-zinc-900/90 p-3 rounded-2xl outline-none border border-white/[0.08] shadow-[0_20px_50px_-28px_rgba(0,0,0,0.9)] focus:ring-2 focus:ring-[#ff3860]/30"
               style={{
                 gridTemplateColumns: `repeat(${gridBounds.cols || 1}, ${cellSize}px)`,
                 gridAutoRows: `${cellSize}px`,
@@ -841,7 +822,7 @@ const CrosswordPlayer = ({
             <div className="bg-gradient-to-b from-[#141212] to-[#0c0a0a] rounded-2xl p-6 border border-white/[0.07] shadow-[0_16px_40px_-24px_rgba(0,0,0,0.85)]">
               <h3 className="text-sm font-bold text-white border-b border-white/[0.08] pb-3 mb-4 uppercase tracking-[0.2em] flex justify-between items-center">
                 Across
-                <HelpCircle size={18} className="text-gray-500 cursor-pointer hover:text-[#e63946] transition-colors" />
+                <HelpCircle size={18} className="text-gray-500 cursor-pointer hover:text-[#ff3860] transition-colors" />
               </h3>
               <ul className="flex flex-col gap-2 max-h-72 overflow-y-auto pr-1">
                 {clues.across.length === 0 ? (
@@ -853,12 +834,12 @@ const CrosswordPlayer = ({
                       onClick={() => setActiveByClue(clue.id)}
                       className={`flex flex-col gap-2 p-3 rounded-xl transition-all group cursor-pointer border ${
                         activeClueId === clue.id
-                          ? 'bg-[#e63946]/[0.12] border-[#e63946]/35 shadow-[0_0_0_1px_rgba(230,57,70,0.12)]'
+                          ? 'bg-[#ff3860]/[0.12] border-[#ff3860]/35 shadow-[0_0_0_1px_rgba(255,56,96,0.12)]'
                           : 'border-transparent hover:bg-white/[0.04] hover:border-white/[0.06]'
                       }`}
                     >
                       <div className="flex gap-3 items-start">
-                        <span className="font-bold text-gray-500 group-hover:text-[#e63946] tabular-nums">{clue.number}</span>
+                        <span className="font-bold text-gray-500 group-hover:text-[#ff3860] tabular-nums">{clue.number}</span>
                         <span className="text-gray-300 group-hover:text-white text-sm leading-snug">{clue.clue || clue.question}</span>
                       </div>
                       <div className="flex gap-2">
@@ -868,13 +849,13 @@ const CrosswordPlayer = ({
                           onChange={(e) => handleWordInputChange(clue.id, e.target.value)}
                           placeholder="Answer"
                           disabled={isLocked}
-                          className="flex-1 bg-[#080808] border border-white/[0.08] rounded-lg px-3 py-2 text-sm text-gray-100 focus:outline-none focus:ring-2 focus:ring-[#e63946]/20 focus:border-[#e63946]/40"
+                          className="flex-1 bg-[#080808] border border-white/[0.08] rounded-lg px-3 py-2 text-sm text-gray-100 focus:outline-none focus:ring-2 focus:ring-[#ff3860]/20 focus:border-[#ff3860]/40"
                         />
                         <button
                           type="button"
                           onClick={() => validateClue(clue)}
                           disabled={checkingClueId === clue.id || !selectedPuzzle || isLocked}
-                          className="bg-white/[0.06] px-3 py-2 rounded-lg text-xs font-semibold text-gray-100 border border-white/10 hover:bg-[#e63946]/20 hover:border-[#e63946]/35 disabled:opacity-50"
+                          className="bg-white/[0.06] px-3 py-2 rounded-lg text-xs font-semibold text-gray-100 border border-white/10 hover:bg-[#ff3860]/20 hover:border-[#ff3860]/35 disabled:opacity-50"
                         >
                           {checkingClueId === clue.id ? '...' : 'Check'}
                         </button>
@@ -890,7 +871,7 @@ const CrosswordPlayer = ({
             <div className="bg-gradient-to-b from-[#141212] to-[#0c0a0a] rounded-2xl p-6 border border-white/[0.07] shadow-[0_16px_40px_-24px_rgba(0,0,0,0.85)]">
               <h3 className="text-sm font-bold text-white border-b border-white/[0.08] pb-3 mb-4 uppercase tracking-[0.2em] flex justify-between items-center">
                 Down
-                <HelpCircle size={18} className="text-gray-500 cursor-pointer hover:text-[#e63946] transition-colors" />
+                <HelpCircle size={18} className="text-gray-500 cursor-pointer hover:text-[#ff3860] transition-colors" />
               </h3>
               <ul className="flex flex-col gap-2 max-h-72 overflow-y-auto pr-1">
                 {clues.down.length === 0 ? (
@@ -902,12 +883,12 @@ const CrosswordPlayer = ({
                       onClick={() => setActiveByClue(clue.id)}
                       className={`flex flex-col gap-2 p-3 rounded-xl transition-all group cursor-pointer border ${
                         activeClueId === clue.id
-                          ? 'bg-[#e63946]/[0.12] border-[#e63946]/35 shadow-[0_0_0_1px_rgba(230,57,70,0.12)]'
+                          ? 'bg-[#ff3860]/[0.12] border-[#ff3860]/35 shadow-[0_0_0_1px_rgba(255,56,96,0.12)]'
                           : 'border-transparent hover:bg-white/[0.04] hover:border-white/[0.06]'
                       }`}
                     >
                       <div className="flex gap-3 items-start">
-                        <span className="font-bold text-gray-500 group-hover:text-[#e63946] tabular-nums">{clue.number}</span>
+                        <span className="font-bold text-gray-500 group-hover:text-[#ff3860] tabular-nums">{clue.number}</span>
                         <span className="text-gray-300 group-hover:text-white text-sm leading-snug">{clue.clue || clue.question}</span>
                       </div>
                       <div className="flex gap-2">
@@ -917,13 +898,13 @@ const CrosswordPlayer = ({
                           onChange={(e) => handleWordInputChange(clue.id, e.target.value)}
                           placeholder="Answer"
                           disabled={isLocked}
-                          className="flex-1 bg-[#080808] border border-white/[0.08] rounded-lg px-3 py-2 text-sm text-gray-100 focus:outline-none focus:ring-2 focus:ring-[#e63946]/20 focus:border-[#e63946]/40"
+                          className="flex-1 bg-[#080808] border border-white/[0.08] rounded-lg px-3 py-2 text-sm text-gray-100 focus:outline-none focus:ring-2 focus:ring-[#ff3860]/20 focus:border-[#ff3860]/40"
                         />
                         <button
                           type="button"
                           onClick={() => validateClue(clue)}
                           disabled={checkingClueId === clue.id || !selectedPuzzle || isLocked}
-                          className="bg-white/[0.06] px-3 py-2 rounded-lg text-xs font-semibold text-gray-100 border border-white/10 hover:bg-[#e63946]/20 hover:border-[#e63946]/35 disabled:opacity-50"
+                          className="bg-white/[0.06] px-3 py-2 rounded-lg text-xs font-semibold text-gray-100 border border-white/10 hover:bg-[#ff3860]/20 hover:border-[#ff3860]/35 disabled:opacity-50"
                         >
                           {checkingClueId === clue.id ? '...' : 'Check'}
                         </button>

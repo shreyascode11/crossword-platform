@@ -10,22 +10,69 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/6.0/ref/settings/
 """
 
+import os
+import warnings
 from pathlib import Path
+
+from django.core.exceptions import ImproperlyConfigured
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 
-# Quick-start development settings - unsuitable for production
-# See https://docs.djangoproject.com/en/6.0/howto/deployment/checklist/
+# SECURITY WARNING: set DJANGO_SECRET_KEY in environment for production!
+_DEFAULT_SECRET = 'django-insecure-_ixq7m(m9a21lp=ksb#%)@=_x7mg(1@e(!x&vg*)tc)n37on5*'
+SECRET_KEY = (os.environ.get('DJANGO_SECRET_KEY') or '').strip() or _DEFAULT_SECRET
 
-# SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-_ixq7m(m9a21lp=ksb#%)@=_x7mg(1@e(!x&vg*)tc)n37on5*'
+# A key is unusable in production if it is blank, the shipped default, or the
+# placeholder text from .env.example.
+_INSECURE_KEY = (
+    SECRET_KEY == _DEFAULT_SECRET
+    or len(SECRET_KEY) < 32
+    or SECRET_KEY.startswith('change-me')
+    or SECRET_KEY == 'my-super-secret-key-change-this'
+)
+if _INSECURE_KEY:
+    warnings.warn(
+        "DJANGO_SECRET_KEY is not set to a strong value. Never deploy this to production.",
+        stacklevel=1,
+    )
 
-# SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = os.environ.get('DJANGO_DEBUG', 'False') == 'True'
 
-ALLOWED_HOSTS = []
+# Refuse to boot a production server with a weak/placeholder key.
+if not DEBUG and _INSECURE_KEY:
+    raise ImproperlyConfigured(
+        "DJANGO_SECRET_KEY must be set to a strong, unique value (32+ chars) "
+        "when DJANGO_DEBUG=False. Generate one with: "
+        "python -c \"import secrets; print(secrets.token_hex(50))\""
+    )
+
+ALLOWED_HOSTS = [h.strip() for h in os.environ.get('ALLOWED_HOSTS', 'localhost,127.0.0.1').split(',') if h.strip()]
+
+# ── HTTPS / cookie hardening ────────────────────────────────────────────────
+# Off by default so an HTTP-only (IP address) deployment isn't locked out.
+# Set DJANGO_SECURE=True once the site is served over TLS.
+SECURE_ENABLED = os.environ.get('DJANGO_SECURE', 'False') == 'True'
+
+# Honour X-Forwarded-Proto when running behind nginx/a load balancer.
+SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+
+SECURE_SSL_REDIRECT = SECURE_ENABLED
+SESSION_COOKIE_SECURE = SECURE_ENABLED
+CSRF_COOKIE_SECURE = SECURE_ENABLED
+SECURE_HSTS_SECONDS = 31536000 if SECURE_ENABLED else 0
+SECURE_HSTS_INCLUDE_SUBDOMAINS = SECURE_ENABLED
+SECURE_HSTS_PRELOAD = SECURE_ENABLED
+
+SECURE_CONTENT_TYPE_NOSNIFF = True
+SECURE_REFERRER_POLICY = 'same-origin'
+X_FRAME_OPTIONS = 'DENY'
+
+# Trusted origins for CSRF (Django 4+ requires scheme). Set on deployment.
+CSRF_TRUSTED_ORIGINS = [
+    o.strip() for o in os.environ.get('CSRF_TRUSTED_ORIGINS', '').split(',') if o.strip()
+]
 
 
 # Application definition
@@ -47,11 +94,20 @@ EXTERNAL_APPS = [
 
 INSTALLED_APPS += EXTERNAL_APPS
 
-CORS_ALLOW_ALL_ORIGINS = True
+CORS_ALLOW_ALL_ORIGINS = os.environ.get('CORS_ALLOW_ALL_ORIGINS', 'False') == 'True'
+# Let the browser read the download filename from cross-origin export responses.
+CORS_EXPOSE_HEADERS = ['Content-Disposition']
+
+CORS_ALLOWED_ORIGINS = [
+    o.strip()
+    for o in os.environ.get('CORS_ALLOWED_ORIGINS', 'http://localhost:3000,http://127.0.0.1:3000,http://localhost:5173,http://127.0.0.1:5173').split(',')
+    if o.strip()
+]
 
 MIDDLEWARE = [
     'corsheaders.middleware.CorsMiddleware',
     'django.middleware.security.SecurityMiddleware',
+    'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -85,8 +141,24 @@ WSGI_APPLICATION = 'backend.wsgi.application'
 
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+        'ENGINE': 'django.db.backends.postgresql',
+        'NAME': os.environ.get('DB_NAME', 'crossword'),
+        'USER': os.environ.get('DB_USER', 'postgres'),
+        'PASSWORD': os.environ.get('DB_PASSWORD', ''),
+        'HOST': os.environ.get('DB_HOST', 'localhost'),
+        'PORT': os.environ.get('DB_PORT', '5432'),
+        'CONN_MAX_AGE': int(os.environ.get('DB_CONN_MAX_AGE', '60')),
+    }
+}
+
+
+# Cache — backed by the database so state (e.g. the login-failure counter) is
+# shared across all gunicorn worker processes. An in-memory cache is per-process
+# and would let brute-force attempts slip through by hitting different workers.
+CACHES = {
+    'default': {
+        'BACKEND': 'django.core.cache.backends.db.DatabaseCache',
+        'LOCATION': 'django_cache_table',
     }
 }
 
@@ -126,3 +198,13 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/6.0/howto/static-files/
 
 STATIC_URL = 'static/'
+STATIC_ROOT = BASE_DIR / 'staticfiles'
+
+STORAGES = {
+    'default': {
+        'BACKEND': 'django.core.files.storage.FileSystemStorage',
+    },
+    'staticfiles': {
+        'BACKEND': 'whitenoise.storage.CompressedManifestStaticFilesStorage',
+    },
+}

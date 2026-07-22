@@ -1,0 +1,4 @@
+# Keeps public/ in git even when empty.
+# The frontend Dockerfile does `COPY --from=builder /app/public ./public`,
+# which fails if the directory is missing from a fresh clone.
+# Safe to delete once real static assets live here.
